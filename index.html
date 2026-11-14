@@ -211,30 +211,39 @@ const ZONES = {
   unknown: { label: "Unknown", kw: [] }
 };
 const HOME_ZONES = ["westside", "central", "valley", "longbeach", "oc"];
-// Commute desirability 0–5 from each home base. Rows follow the freeway reality (405 / 10 / 5 / 110), not straight-line distance.
-const COMMUTE = {
-  westside:  { westside: 5, la: 3.5, central: 3, valley: 3, longbeach: 3.5, oc: 1.5 },
-  central:   { westside: 3, la: 4, central: 5, valley: 4, longbeach: 3, oc: 2 },
-  valley:    { westside: 3, la: 3.5, central: 4, valley: 5, longbeach: 1.5, oc: 1 },
-  longbeach: { westside: 3.5, la: 3.5, central: 3, valley: 1.5, longbeach: 5, oc: 4 },
-  oc:        { westside: 1.5, la: 2, central: 2, valley: 1, longbeach: 4, oc: 5 }
+// One-way peak commute minutes from each home base. Rows follow the freeway reality (405 / 10 / 5 / 110), not straight-line distance.
+const COMMUTE_MIN = {
+  westside:  { westside: 25, la: 40, central: 45, valley: 45, longbeach: 50, oc: 75 },
+  central:   { westside: 45, la: 30, central: 20, valley: 35, longbeach: 45, oc: 60 },
+  valley:    { westside: 45, la: 40, central: 35, valley: 20, longbeach: 65, oc: 85 },
+  longbeach: { westside: 50, la: 45, central: 45, valley: 65, longbeach: 20, oc: 35 },
+  oc:        { westside: 75, la: 60, central: 60, valley: 85, longbeach: 35, oc: 25 }
 };
 
+// Fit factors (weighted, 0–5 each). Access is applied afterwards as a multiplier, not a weight.
 const FACTORS = [
-  ["roleFit", "Role fit"], ["domain", "Domain"], ["ai", "AI relevance"], ["access", "Access"],
-  ["timing", "Timing"], ["geo", "Geography"], ["level", "Level"], ["comp", "Comp"]
+  ["roleFit", "Role fit"], ["thesis", "Focus fit"], ["health", "Company health"],
+  ["timing", "Timing"], ["geo", "Commute"], ["level", "Level"]
 ];
+const MODEL_VERSION = 2;
+const WEEKLY_TARGETS = [
+  ["warm", "Warm conversations", 5, ["message", "coffee", "call"]],
+  ["referred", "Referred applications", 3, ["referral"]],
+  ["cold", "Cold applications (max)", 5, ["applied"]]
+];
+const ACT_TYPES = [["note", "Note"], ["message", "Message"], ["coffee", "Coffee / meeting"], ["call", "Call"], ["applied", "Applied (cold)"], ["referral", "Applied (referred)"], ["interview", "Interview"]];
 
 const DEFAULT_SETTINGS = {
+  modelVersion: MODEL_VERSION,
   homeZone: "westside",
-  maxOnsiteDays: 3,
+  maxCommuteHours: 6,
+  targetLevel: "lead",
   compFloor: 0,
-  minStage: "seed",
-  weights: { roleFit: 25, domain: 15, ai: 15, access: 20, timing: 10, geo: 10, level: 5, comp: 0 },
-  archPriority: { A: "primary", B: "primary", C: "primary", D: "other", E: "other", F: "secondary", G: "secondary", H: "secondary", I: "primary", J: "secondary" },
+  weights: { roleFit: 30, thesis: 15, health: 15, timing: 10, geo: 15, level: 15 },
+  archPriority: { A: "primary", B: "primary", C: "secondary", D: "secondary", E: "other", F: "secondary", G: "other", H: "other", I: "other", J: "other" },
   useAiScores: true,
   model: "claude-opus-5-5",
-  profileSummary: "Analytics and strategy professional with 10+ years across data engineering, consulting, operations strategy, and people/talent analytics. MBA in strategy and operations. Builds pipelines and dashboards (SQL, Snowflake, Fivetran, R, Tableau) and translates analysis for executives. Applying AI to automate analytics workflows. Targeting LA/OC startups at Lead / Head-of level.",
+  profileSummary: "Analytics and strategy professional with 10+ years across data engineering, consulting, operations strategy, and people/talent analytics. MBA in strategy and operations. Builds pipelines and dashboards (SQL, Snowflake, Fivetran, R, Tableau) and translates analysis for executives. Targeting Analytics Lead / first data hire roles at Series A–C startups in LA/OC, plus HR-tech companies.",
   resumeVersions: ["Builder (A/E)", "Talent (B/D)", "Operator (C/F)"]
 };
 
@@ -261,8 +270,8 @@ function sampleData() {
   const c = (id, name, o) => Object.assign({ id, name, stage: "", lastRaiseDate: "", sector: "", website: "", aiNative: false, domainMatch: false, notes: "", sample: true }, o);
   const companies = [
     c("c1", "Kelpworks Aero (sample)", { stage: "Series B", lastRaiseDate: daysAgo(70), sector: "Defense hardware / drones", aiNative: false }),
-    c("c2", "Shortlist Labs (sample)", { stage: "Series A", lastRaiseDate: daysAgo(40), sector: "AI recruiting / HR tech", aiNative: true, domainMatch: true }),
-    c("c3", "Bluffside Medical (sample)", { stage: "Series C", lastRaiseDate: daysAgo(300), sector: "Medical devices" }),
+    c("c2", "Shortlist Labs (sample)", { stage: "Series A", lastRaiseDate: daysAgo(40), sector: "AI recruiting / HR tech", aiNative: true, domainMatch: true, topInvestor: true }),
+    c("c3", "Bluffside Medical (sample)", { stage: "Series C", lastRaiseDate: daysAgo(620), sector: "Medical devices", layoffs: true }),
     c("c4", "Arroyo Goods (sample)", { stage: "Seed", lastRaiseDate: daysAgo(150), sector: "DTC consumer brand" }),
     c("c5", "Parcelwise (sample)", { stage: "Series A", lastRaiseDate: daysAgo(20), sector: "AI logistics software", aiNative: true })
   ];
@@ -314,8 +323,16 @@ function load() {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) {
       const s = JSON.parse(raw);
+      const savedVersion = (s.settings && s.settings.modelVersion) || 1;
       s.settings = Object.assign(structuredClone(DEFAULT_SETTINGS), s.settings || {});
-      s.settings.weights = Object.assign({}, DEFAULT_SETTINGS.weights, s.settings.weights || {});
+      if (savedVersion < MODEL_VERSION) {
+        // v2 scoring model: new factors, lanes, and commute limit replace the v1 settings
+        s.settings.weights = structuredClone(DEFAULT_SETTINGS.weights);
+        s.settings.archPriority = structuredClone(DEFAULT_SETTINGS.archPriority);
+        s.settings.modelVersion = MODEL_VERSION;
+        delete s.settings.maxOnsiteDays;
+      }
+      s.settings.weights = Object.fromEntries(FACTORS.map(([k]) => [k, (s.settings.weights || {})[k] ?? DEFAULT_SETTINGS.weights[k]]));
       s.settings.archPriority = Object.assign({}, DEFAULT_SETTINGS.archPriority, s.settings.archPriority || {});
       s.profile = Object.assign(structuredClone(DEFAULT_PROFILE), s.profile || {});
       for (const k of ["companies", "leads", "contacts", "activities", "proofPoints"]) s[k] = s[k] || [];
@@ -411,10 +428,10 @@ function priorityMult(arch) { const p = S.settings.archPriority[arch]; return p 
 function computeFactors(lead) {
   const P = S.profile, st = S.settings, c = company(lead);
   const t = leadText(lead);
-  const f = {}, why = {};
+  const f = {}, why = {}, src = {};
 
-  // Role fit: weighted keyword-cluster coverage × role-type priority − red flags.
-  // domain_talent and ai feed their own factors, so they are skipped here to avoid double counting.
+  // Role fit: weighted keyword-cluster coverage × lane priority − red flags.
+  // domain_talent and ai feed Focus fit instead, so they are skipped here.
   let num = 0, den = 0; const hitList = [];
   for (const [name, cl] of Object.entries(P.clusters)) {
     if (name === "domain_talent" || name === "ai") continue;
@@ -426,75 +443,100 @@ function computeFactors(lead) {
   let rf = den ? (num / den) * 5 : 0;
   rf = rf * (arch ? priorityMult(arch) : 0.7) - neg.length * 0.75;
   f.roleFit = clamp(rf); why.roleFit = (hitList.join(" · ") || "no profile keywords found") + (neg.length ? " · red flags: " + neg.join(", ") : "");
+  if (lead.ai && st.useAiScores && typeof lead.ai.role_fit === "number") { f.roleFit = clamp(lead.ai.role_fit); src.roleFit = "ai"; }
 
-  // Domain: talent / HR / future-of-work company
+  // Focus fit: talent/HR-tech or AI company, counted fully only when the role itself fits.
   const dh = hits(t, P.clusters.domain_talent ? P.clusters.domain_talent.kw : []);
   const companyDomain = c.domainMatch || hits((c.sector || "").toLowerCase(), P.domainCompanyKw).length > 0;
-  f.domain = companyDomain ? 5 : [0, 2, 3.5, 5][Math.min(dh.length, 3)];
-  why.domain = companyDomain ? "talent / HR-tech company" : dh.length + " talent keywords";
-
-  // AI relevance
+  let dom = companyDomain ? 5 : [0, 2, 3.5, 5][Math.min(dh.length, 3)];
   const ah = hits(t, P.clusters.ai ? P.clusters.ai.kw : []);
-  f.ai = c.aiNative ? 5 : [0, 2, 3, 4, 5][Math.min(ah.length, 4)];
-  why.ai = c.aiNative ? "AI-native company" : (ah.length ? ah.join(", ") : "no AI signals");
+  let ai = c.aiNative ? 5 : [0, 2, 3, 4, 5][Math.min(ah.length, 4)];
+  if (lead.ai && st.useAiScores) {
+    if (typeof lead.ai.domain_match === "number") dom = lead.ai.domain_match;
+    if (typeof lead.ai.ai_relevance === "number") ai = lead.ai.ai_relevance;
+    src.thesis = "ai";
+  }
+  let th = Math.max(dom, ai * 0.8);
+  const gated = f.roleFit < 2.5;
+  if (gated) th = th * (f.roleFit / 2.5);
+  f.thesis = clamp(th);
+  why.thesis = (companyDomain ? "talent / HR-tech company" : dh.length + " talent keyword(s)") + " · " + (c.aiNative ? "AI-native" : ah.length + " AI keyword(s)") + (gated ? " · reduced: role fit is weak" : "");
 
-  // Access: warmest contact at the company
-  const cs = S.contacts.filter((p) => p.companyId === lead.companyId);
-  const warm = cs.reduce((m, p) => Math.max(m, +p.warmth || 0), 0);
-  f.access = warm; why.access = cs.length ? cs.length + " contact(s), warmest " + warm + "/5" : "no contacts yet (cold)";
+  // Company health: months since last raise as a runway proxy, investor quality, layoffs.
+  let h = 2.5; const hw = [];
+  if (c.lastRaiseDate) {
+    const m = daysBetween(c.lastRaiseDate, today()) / 30.4;
+    h = m <= 12 ? 4.5 : m <= 18 ? 3.5 : m <= 24 ? 2 : 1;
+    hw.push("raised " + Math.round(m) + " mo ago");
+  } else hw.push("raise date unknown");
+  if (c.topInvestor) { h += 0.5; hw.push("strong lead investor"); }
+  if (c.layoffs) { h -= 2; hw.push("layoffs in last 12 mo"); }
+  f.health = clamp(h); why.health = hw.join(" · ");
 
-  // Timing: posting freshness or recent raise
-  let post = null, raise = null;
-  const pd = lead.postedDate || (lead.kind === "posting" ? lead.foundDate : "");
-  if (pd) { const d = daysBetween(pd, today()); post = d <= 7 ? 5 : d <= 14 ? 4 : d <= 30 ? 3 : d <= 60 ? 1.5 : 0.5; }
-  if (c.lastRaiseDate) { const m = daysBetween(c.lastRaiseDate, today()) / 30.4; raise = m <= 3 ? 5 : m <= 6 ? 4 : m <= 12 ? 2.5 : 1; }
-  f.timing = Math.max(post ?? 0, raise ?? 0, (post == null && raise == null) ? 2 : 0);
-  why.timing = [pd ? "posted " + daysBetween(pd, today()) + "d ago" : "", c.lastRaiseDate ? "raised " + Math.round(daysBetween(c.lastRaiseDate, today()) / 30.4) + " mo ago" : ""].filter(Boolean).join(" · ") || "no dates";
+  // Timing: postings by posting age only; target companies by raise recency only.
+  if (lead.kind === "target") {
+    if (c.lastRaiseDate) { const m = daysBetween(c.lastRaiseDate, today()) / 30.4; f.timing = m <= 3 ? 5 : m <= 6 ? 4 : m <= 12 ? 2.5 : 1; why.timing = "target company · raised " + Math.round(m) + " mo ago"; }
+    else { f.timing = 2; why.timing = "target company · no raise date"; }
+  } else {
+    const pd = lead.postedDate || lead.foundDate;
+    if (/\breposted\b/i.test(lead.jd || "")) { f.timing = 1; why.timing = "reposted listing"; }
+    else if (pd) { const d = daysBetween(pd, today()); f.timing = d <= 7 ? 5 : d <= 14 ? 4 : d <= 30 ? 3 : d <= 45 ? 2 : 1; why.timing = (lead.postedDate ? "posted " : "found ") + d + "d ago"; }
+    else { f.timing = 2; why.timing = "no posting date"; }
+  }
 
-  // Geography: commute from home base, softened by fewer on-site days
-  let g;
-  if (lead.workplace === "remote" || lead.zone === "remote") { g = 5; why.geo = "remote"; }
+  // Commute: weekly hours in the car = one-way minutes × 2 × days on-site.
+  let g, weeklyHours = 0;
+  if (lead.workplace === "remote" || lead.zone === "remote") { g = 3; why.geo = "remote (national applicant pool)"; }
   else if (lead.zone === "other") { g = 0; why.geo = "outside LA / OC and not remote"; }
-  else if (lead.zone === "unknown") { g = 2.5; why.geo = "location unknown"; }
   else {
-    const base = (COMMUTE[st.homeZone] || COMMUTE.westside)[lead.zone] ?? 2.5;
-    const days = lead.workplace === "onsite" ? 5 : lead.workplace === "hybrid" ? (lead.onsiteDays || 3) : (lead.onsiteDays || 5);
-    g = base + (5 - base) * (1 - days / 5);
-    if (days > st.maxOnsiteDays) g -= 1;
-    why.geo = ZONES[lead.zone].label + " · " + days + " day(s) on-site";
+    const mins = lead.zone === "unknown" ? 45 : ((COMMUTE_MIN[st.homeZone] || COMMUTE_MIN.westside)[lead.zone] ?? 45);
+    const assumed = !(lead.workplace === "onsite" || lead.onsiteDays);
+    const days = lead.workplace === "onsite" ? 5 : (lead.onsiteDays || 3);
+    weeklyHours = mins * 2 * days / 60;
+    g = weeklyHours <= 2 ? 5 : weeklyHours <= 4 ? 4 : weeklyHours <= 6 ? 3 : weeklyHours <= 8 ? 2 : weeklyHours <= 10 ? 1 : 0;
+    why.geo = (ZONES[lead.zone] ? ZONES[lead.zone].label : "") + " · ~" + mins + " min each way × " + days + " day(s)" + (assumed ? " (assumed)" : "") + " = " + weeklyHours.toFixed(1) + " h/week";
   }
   f.geo = clamp(g);
 
-  // Level
-  const titleL = (lead.title || "").toLowerCase();
-  const up = hits(titleL, P.levelTarget), down = hits(titleL, P.levelDown).concat(/entry[- ]level/i.test(lead.jd || "") && !/entry[- ]level/.test(titleL) ? ["entry level"] : []);
-  f.level = lead.kind === "target" ? 3 : down.length ? 1 : up.length ? 5 : 3;
-  why.level = down.length ? "below target: " + down.join(", ") : up.length ? "target level: " + up.join(", ") : "level unclear";
+  // Level: title plus scope signals in the description; Head-of is a stretch in "lead" mode.
+  const titleL = (lead.title || "").toLowerCase(), jdL = (lead.jd || "").toLowerCase();
+  const down = hits(titleL, P.levelDown).concat(/entry[- ]level/.test(jdL) && !/entry[- ]level/.test(titleL) ? ["entry level"] : []);
+  const headish = /\b(head of|director|vp|vice president)\b/.test(titleL) || (/\bchief\b/.test(titleL) && !/chief of staff/.test(titleL));
+  const leadish = hits(titleL, P.levelTarget).length > 0;
+  const lw = [];
+  let lv;
+  if (lead.kind === "target") { lv = 3; lw.push("no posting yet"); }
+  else if (down.length) { lv = 1; lw.push("below target: " + down.join(", ")); }
+  else if (headish) { lv = st.targetLevel === "head" ? 5 : 3.5; lw.push(st.targetLevel === "head" ? "Head-of level" : "stretch: pitch as Lead with a path to Head of"); }
+  else if (leadish) { lv = 5; lw.push("target level"); }
+  else { lv = 3; lw.push("level unclear"); }
+  if (/reports? (directly )?to (the )?(ceo|coo|cfo|cto|founders?|co-founders?|vp)/.test(jdL)) { lv += 1; lw.push("reports to exec"); }
+  if (/(build|grow|hire) (the|a|our) (data |analytics )?team|first (data|analytics) hire/.test(jdL)) { lv += 0.5; lw.push("team-building scope"); }
+  f.level = clamp(lv); why.level = lw.join(" · ");
 
-  // Comp vs floor
-  const floor = +st.compFloor || 0, hi = lead.compMax || lead.compMin, lo = lead.compMin || lead.compMax;
-  if (!hi || !floor) { f.comp = 3; why.comp = hi ? money(lo) + "–" + money(hi) + " (no floor set)" : "comp unknown"; }
-  else if (hi < floor) { f.comp = 0; why.comp = "below floor " + money(floor); }
-  else if (lo >= floor) { f.comp = 5; why.comp = "meets floor"; }
-  else { f.comp = 4; why.comp = "range straddles floor"; }
-
-  // AI-assisted values replace the keyword guesses when available
-  const src = {};
-  if (lead.ai && st.useAiScores) {
-    for (const [k, a] of [["roleFit", "role_fit"], ["ai", "ai_relevance"], ["domain", "domain_match"]]) {
-      if (typeof lead.ai[a] === "number") { f[k] = clamp(lead.ai[a]); src[k] = "ai"; }
-    }
-  }
   // Manual overrides win over everything
   for (const [k] of FACTORS) if (lead.overrides && lead.overrides[k] != null && lead.overrides[k] !== "") { f[k] = clamp(+lead.overrides[k]); src[k] = "manual"; }
-  return { f, why, src, arch, flags: { belowFloor: f.comp === 0 && !!floor, levelDown: down.length > 0, redFlags: neg } };
-}
-function score(lead) {
-  const { f } = computeFactors(lead); const w = S.settings.weights;
-  let tot = 0, wsum = 0;
+
+  // Fit score (0–100) from weights, then access multiplier and hard gates.
+  const w = st.weights; let tot = 0, wsum = 0;
   for (const [k] of FACTORS) { tot += (w[k] || 0) * f[k] / 5; wsum += (w[k] || 0); }
-  return wsum ? Math.round(tot / wsum * 100) : 0;
+  const fit = wsum ? Math.round(tot / wsum * 100) : 0;
+  const cs = S.contacts.filter((p) => p.companyId === lead.companyId);
+  const warm = cs.reduce((m, p) => Math.max(m, +p.warmth || 0), 0);
+  const mult = 0.6 + 0.1 * warm;
+  const accessWhy = cs.length ? cs.length + " contact(s), warmest " + warm + "/5" : "no contacts yet (cold)";
+  const gates = [];
+  let final = Math.min(100, Math.round(fit * mult));
+  if (f.roleFit < 2.5 && !(lead.overrides && lead.overrides.roleFit != null)) { final = Math.min(final, 50); gates.push("weak role fit: capped at 50"); }
+  const floor = +st.compFloor || 0, hi = lead.compMax || lead.compMin, lo = lead.compMin || lead.compMax;
+  const belowFloor = !!(floor && hi && hi < floor);
+  if (belowFloor) { final = Math.min(final, 40); gates.push("below cash floor " + money(floor) + ": capped at 40"); }
+  const overCommute = weeklyHours > (+st.maxCommuteHours || 99);
+  const compWhy = !hi ? "comp unknown" : money(lo) + "–" + money(hi) + (floor ? (belowFloor ? " (below floor)" : lo >= floor ? " (meets floor)" : " (straddles floor)") : " (no floor set)");
+  return { f, why, src, arch, fit, mult, warm, accessWhy, final, gates, compWhy, weeklyHours,
+    flags: { belowFloor, levelDown: down.length > 0, redFlags: neg, overCommute, layoffs: !!c.layoffs } };
 }
+function score(lead) { return computeFactors(lead).final; }
 function pillClass(s) { return s >= 70 ? "pill hi" : s >= 50 ? "pill mid" : "pill"; }
 
 function bestBullets(lead, n = 3) {
@@ -619,7 +661,16 @@ function viewToday() {
   const act = S.leads.filter((l) => ACTIVE.includes(l.stage));
   const due = act.filter((l) => l.nextFollowUp && l.nextFollowUp <= today()).sort((a, b) => a.nextFollowUp.localeCompare(b.nextFollowUp));
   const stalled = act.filter(isStalled);
-  const top = S.leads.filter((l) => ["discovered", "researching"].includes(l.stage)).map((l) => [l, score(l)]).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const fresh = S.leads.filter((l) => ["discovered", "researching"].includes(l.stage)).map((l) => [l, score(l)]).sort((a, b) => b[1] - a[1]);
+  const top = fresh.filter(([l]) => l.kind !== "target").slice(0, 6);
+  const targets = fresh.filter(([l]) => l.kind === "target").slice(0, 6);
+  const wk = new Date(); wk.setDate(wk.getDate() - ((wk.getDay() + 6) % 7)); const weekStart = wk.toISOString().slice(0, 10);
+  const weekActs = S.activities.filter((a) => a.date >= weekStart && !a.sample);
+  const bands = [["70+", (s) => s >= 70], ["50–69", (s) => s >= 50 && s < 70], ["<50", (s) => s < 50]].map(([label, test]) => {
+    const acted = S.leads.filter((l) => !l.sample && ["applied", "screening", "interviewing", "offer", "accepted", "declined", "dead"].includes(l.stage) && test(score(l)));
+    const adv = acted.filter((l) => ["screening", "interviewing", "offer", "accepted", "declined"].includes(l.stage));
+    return [label, acted.length, adv.length];
+  });
   const item = (l, s) => `<div class="list-item" data-open="${l.id}"><div class="main"><div><strong>${esc(company(l).name)}</strong> · ${esc(leadName(l))}</div><div class="row small muted">${archChip(archetype(l))}<span>${STAGE_LABEL[l.stage]}</span>${fuChip(l)}</div></div><span class="${pillClass(s ?? score(l))}">${s ?? score(l)}</span></div>`;
   const counts = STAGES.map(([k, label]) => [label, S.leads.filter((l) => l.stage === k).length]);
   const max = Math.max(1, ...counts.map((c) => c[1]));
@@ -631,15 +682,32 @@ function viewToday() {
       ${due.length ? due.map((l) => item(l)).join("") : '<div class="empty">Nothing due. Set a follow-up date on any active lead to schedule it here.</div>'}
       ${stalled.length ? `<h3 style="margin-top:14px">Stalled <span class="muted small">(active, no next step)</span></h3>${stalled.map((l) => item(l)).join("")}` : ""}
     </section>
-    <section class="panel"><div class="panel-head"><h2>Best leads to act on</h2><span class="muted small">Discovered or researching, by score</span></div>
-      ${top.length ? top.map(([l, s]) => item(l, s)).join("") : '<div class="empty">No new leads. Add one from a posting or a target company.</div>'}
+    <section class="panel"><div class="panel-head"><h2>This week</h2><span class="muted small">Since Monday ${esc(weekStart)}</span></div>
+      <div class="funnel">${WEEKLY_TARGETS.map(([k, label, goal, types]) => { const n = weekActs.filter((a) => types.includes(a.type)).length; const over = k === "cold" && n > goal; return `<div class="funnel-row"><span>${label}</span><div class="bar-track"><div class="bar" style="width:${Math.min(n / goal, 1) * 100}%;${over ? "background:var(--bad)" : ""}"></div></div><span class="num">${n}/${goal}</span></div>`; }).join("")}</div>
+      <p class="small muted" style="margin:10px 0 0">Log coffees, messages, and applications from a lead's Activity section. Referred applications convert far better than cold ones, so cold applications have a ceiling.</p>
+    </section>
+  </div>
+  <div class="grid-2">
+    <section class="panel"><div class="panel-head"><h2>Best postings to act on</h2><span class="muted small">Discovered or researching</span></div>
+      ${top.length ? top.map(([l, s]) => item(l, s)).join("") : '<div class="empty">No new postings. Paste one on the Add lead tab.</div>'}
       <div class="row" style="margin-top:12px"><button class="btn primary" data-view-go="add">Add lead</button></div>
+    </section>
+    <section class="panel"><div class="panel-head"><h2>Target companies to warm up</h2><span class="muted small">No posting yet; find a contact first</span></div>
+      ${targets.length ? targets.map(([l, s]) => item(l, s)).join("") : '<div class="empty">No target companies. Add recently funded companies with Add lead → Target company.</div>'}
     </section>
   </div>
   <div class="grid-2">
     <section class="panel"><div class="panel-head"><h2>Pipeline</h2><span class="muted small">${S.leads.length} leads · ${S.companies.length} companies · ${S.contacts.length} contacts</span></div>
       <div class="funnel">${counts.filter((c, i) => i < 7 || c[1]).map(([label, n]) => `<div class="funnel-row"><span>${label}</span><div class="bar-track"><div class="bar" style="width:${n / max * 100}%"></div></div><span class="num">${n}</span></div>`).join("")}</div>
     </section>
+    <section class="panel"><div class="panel-head"><h2>Is the score working?</h2><span class="muted small">Leads you've applied to, by score band</span></div>
+      <div class="table-wrap"><table><thead><tr><th>Score</th><th>Applied</th><th>Reached screen</th><th>Rate</th></tr></thead><tbody>
+      ${bands.map(([b, n, a]) => `<tr><td>${b}</td><td class="num">${n}</td><td class="num">${a}</td><td class="num">${n ? Math.round(a / n * 100) + "%" : "–"}</td></tr>`).join("")}
+      </tbody></table></div>
+      <p class="small muted" style="margin:10px 0 0">After about 20 applications, high bands should convert better than low ones. If they don't, change the weights in Settings.</p>
+    </section>
+  </div>
+  <div class="grid-2">
     <section class="panel"><div class="panel-head"><h2>Where leads come from</h2><span class="muted small">Advanced = screening or later</span></div>
       <div class="table-wrap"><table><thead><tr><th>Source</th><th>Leads</th><th>Advanced</th><th>Rate</th></tr></thead><tbody>
       ${Object.entries(bySource).sort((a, b) => b[1].n - a[1].n).map(([s, o]) => `<tr><td>${esc(s)}</td><td class="num">${o.n}</td><td class="num">${o.adv}</td><td class="num">${Math.round(o.adv / o.n * 100)}%</td></tr>`).join("") || '<tr><td colspan="4" class="muted">No leads yet</td></tr>'}
@@ -758,14 +826,17 @@ function viewAdd() {
 function previewHTML() {
   const { r, s, bb } = previewScore();
   return `<div class="panel-head"><h2>Live score</h2><span class="${pillClass(s)}" style="font-size:16px">${s}</span></div>
-    <div class="row small">${r.arch ? archChip(r.arch) + " " + esc(ARCH[r.arch].name) : '<span class="muted">Role type unclear</span>'}${r.flags.levelDown ? '<span class="chip warn">below target level</span>' : ""}${r.flags.belowFloor ? '<span class="chip warn">below comp floor</span>' : ""}</div>
+    <div class="row small">${r.arch ? archChip(r.arch) + " " + esc(ARCH[r.arch].name) : '<span class="muted">Role type unclear</span>'}${r.flags.levelDown ? '<span class="chip warn">below target level</span>' : ""}${r.flags.belowFloor ? '<span class="chip warn">below cash floor</span>' : ""}${r.flags.overCommute ? '<span class="chip warn">over commute limit</span>' : ""}</div>
     ${factorBars(r)}
     ${draft.ai ? aiBlock(draft.ai) : ""}
     <div><div class="label" style="margin-bottom:6px">Lead with these proof points</div>${bb.length ? `<ul class="bullets">${bb.map((p) => `<li>${esc(p.text)}</li>`).join("")}</ul>` : '<div class="muted small">No matching proof points yet.</div>'}</div>`;
 }
 function factorBars(r) {
   const w = S.settings.weights;
-  return `<div class="factors">${FACTORS.map(([k, label]) => `<div class="factor" title="${esc(r.why[k] || "")}"><span>${label} <span class="muted small num">${w[k] || 0}</span></span><div class="track"><div class="fill ${r.src[k] === "ai" ? "ai" : ""}" style="width:${r.f[k] / 5 * 100}%"></div></div><span class="num small">${r.f[k].toFixed(1)}${r.src[k] ? `<span class="muted"> ${r.src[k] === "ai" ? "AI" : "set"}</span>` : ""}</span></div><div class="small muted" style="margin:-4px 0 2px 0">${esc(r.why[k] || "")}</div>`).join("")}</div>`;
+  return `<div class="row small"><span class="pill">${r.fit}</span><span>fit</span><span class="muted">×</span><span class="num">${r.mult.toFixed(1)}</span><span>access (${esc(r.accessWhy)})</span><span class="muted">=</span><span class="${pillClass(r.final)}">${r.final}</span></div>
+  ${r.gates.length ? `<div class="row small">${r.gates.map((g) => `<span class="chip warn">${esc(g)}</span>`).join("")}</div>` : ""}
+  <div class="small muted">Comp: ${esc(r.compWhy)}</div>
+  <div class="factors">${FACTORS.map(([k, label]) => `<div class="factor" title="${esc(r.why[k] || "")}"><span>${label} <span class="muted small num">${w[k] || 0}</span></span><div class="track"><div class="fill ${r.src[k] === "ai" ? "ai" : ""}" style="width:${r.f[k] / 5 * 100}%"></div></div><span class="num small">${r.f[k].toFixed(1)}${r.src[k] ? `<span class="muted"> ${r.src[k] === "ai" ? "AI" : "set"}</span>` : ""}</span></div><div class="small muted" style="margin:-4px 0 2px 0">${esc(r.why[k] || "")}</div>`).join("")}</div>`;
 }
 function aiBlock(ai) {
   return `<div class="stack" style="border-top:1px solid var(--line);padding-top:10px"><div class="label">Claude's read</div>
@@ -841,6 +912,8 @@ function viewNetwork() {
           <label class="field"><span>Website</span><input type="url" data-cfield="website" data-cid="${c.id}" value="${esc(c.website)}"></label>
           <label class="row small"><input type="checkbox" data-cflag="aiNative" data-cid="${c.id}" ${c.aiNative ? "checked" : ""}> AI-native</label>
           <label class="row small"><input type="checkbox" data-cflag="domainMatch" data-cid="${c.id}" ${c.domainMatch ? "checked" : ""}> Talent / HR-tech</label>
+          <label class="row small"><input type="checkbox" data-cflag="topInvestor" data-cid="${c.id}" ${c.topInvestor ? "checked" : ""}> Strong lead investor</label>
+          <label class="row small"><input type="checkbox" data-cflag="layoffs" data-cid="${c.id}" ${c.layoffs ? "checked" : ""}> Layoffs in last 12 months</label>
         </div>
         ${leads.map((l) => `<div class="list-item" data-open="${l.id}"><span>${esc(leadName(l))} · ${STAGE_LABEL[l.stage]}</span><span class="${pillClass(score(l))}">${score(l)}</span></div>`).join("")}
         <div class="label">Contacts</div>
@@ -876,14 +949,16 @@ function viewSettings() {
   <section class="panel stack"><h2>Your search</h2>
     <div class="form-grid">
       <label class="field"><span>Home base</span><select id="s-homeZone">${HOME_ZONES.map((z) => `<option value="${z}" ${st.homeZone === z ? "selected" : ""}>${ZONES[z].label}</option>`).join("")}</select></label>
-      <label class="field"><span>Max on-site days / week</span><input type="number" id="s-maxOnsiteDays" min="0" max="5" value="${st.maxOnsiteDays}"></label>
-      <label class="field"><span>Comp floor, base ($, 0 = none)</span><input type="number" id="s-compFloor" step="5000" value="${st.compFloor}"></label>
+      <label class="field"><span>Max commute hours / week</span><input type="number" id="s-maxCommuteHours" min="0" max="20" step="0.5" value="${st.maxCommuteHours}"></label>
+      <label class="field"><span>Cash floor, base ($, hard gate; 0 = none)</span><input type="number" id="s-compFloor" step="5000" value="${st.compFloor}"></label>
+      <label class="field"><span>Target level</span><select id="s-targetLevel"><option value="lead" ${st.targetLevel === "lead" ? "selected" : ""}>Lead, with a path to Head of</option><option value="head" ${st.targetLevel === "head" ? "selected" : ""}>Head of / Director</option></select></label>
     </div>
     <div class="label">Role-type priority</div>
     <div class="form-grid">${Object.entries(ARCH).map(([k, a]) => `<label class="field"><span>${k} · ${esc(a.name)}</span><select data-arch="${k}">${["primary", "secondary", "other"].map((p) => `<option ${st.archPriority[k] === p ? "selected" : ""}>${p}</option>`).join("")}</select></label>`).join("")}</div>
     <label class="field"><span>Resume versions (one per line)</span><textarea id="s-resumeVersions" rows="3">${esc(st.resumeVersions.join("\n"))}</textarea></label>
   </section>
-  <section class="panel stack"><div class="panel-head"><h2>Score weights</h2><span class="small muted">Total <span class="num">${total}</span>; scores are normalized to 100</span></div>
+  <section class="panel stack"><div class="panel-head"><h2>Fit weights</h2><span class="small muted">Total <span class="num">${total}</span>; normalized to 100</span></div>
+    <p class="small muted" style="margin:0">Final score = fit × access multiplier (0.6 cold → 1.1 will refer you), then capped at 50 for weak role fit and 40 below your cash floor.</p>
     <div class="weights">${FACTORS.map(([k, label]) => `<div class="weight-row"><label for="w-${k}">${label}</label><input type="range" id="w-${k}" data-weight="${k}" min="0" max="40" step="1" value="${w[k] || 0}"><span class="num">${w[k] || 0}</span></div>`).join("")}</div>
     <button class="btn" data-act="reset-weights">Reset weights</button>
   </section>
@@ -928,7 +1003,7 @@ function renderDrawer() {
     </div>
     <div class="row">${[3, 7, 14].map((d) => `<button class="btn small" data-act="fu" data-days="${d}">Follow up in ${d}d</button>`).join("")}</div></section>
     <section class="panel stack"><div class="panel-head"><h3>Score breakdown</h3><span class="small muted">Hover or read the note under each bar</span></div>
-      <div class="row small">${r.flags.levelDown ? '<span class="chip warn">below target level</span>' : ""}${r.flags.belowFloor ? '<span class="chip warn">below comp floor</span>' : ""}${r.flags.redFlags.length ? '<span class="chip warn">red flags</span>' : ""}</div>
+      <div class="row small">${r.flags.levelDown ? '<span class="chip warn">below target level</span>' : ""}${r.flags.belowFloor ? '<span class="chip warn">below cash floor</span>' : ""}${r.flags.redFlags.length ? '<span class="chip warn">red flags</span>' : ""}${r.flags.overCommute ? '<span class="chip warn">over commute limit</span>' : ""}${r.flags.layoffs ? '<span class="chip warn">recent layoffs</span>' : ""}</div>
       ${factorBars(r)}
       <details><summary class="small">Override a factor manually</summary><div class="form-grid" style="margin-top:8px">${FACTORS.map(([k, label]) => `<label class="field"><span>${label} (0–5)</span><input type="number" min="0" max="5" step="0.5" data-override="${k}" value="${l.overrides && l.overrides[k] != null ? l.overrides[k] : ""}" placeholder="auto"></label>`).join("")}</div></details>
       <div class="row"><button class="btn" data-act="ai-lead" ${getKey() ? "" : "disabled"}>${l.ai ? "Re-run" : "Run"} Claude analysis</button><span class="small muted" id="ai-lead-status">${getKey() ? "" : "Add an API key in Settings to enable."}</span></div>
@@ -939,7 +1014,7 @@ function renderDrawer() {
       ${people.map((p) => `<div class="row"><strong>${esc(p.name)}</strong><span class="muted small">${esc(p.role)} · warmth ${p.warmth}/5 · ${esc(p.how)}</span></div>`).join("") || '<div class="muted small">No contacts. Add one under Companies & contacts to raise Access.</div>'}
     </section>
     <section class="panel stack"><h3>Activity</h3>
-      <div class="form-grid"><label class="field"><span>Type</span><select id="act-type">${["note", "message", "applied", "call", "interview", "referral"].map((t) => `<option>${t}</option>`).join("")}</select></label>
+      <div class="form-grid"><label class="field"><span>Type</span><select id="act-type">${ACT_TYPES.map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select></label>
       <label class="field"><span>Date</span><input type="date" id="act-date" value="${today()}"></label>
       <label class="field wide"><span>What happened</span><input type="text" id="act-text" placeholder="Sent intro message to…"></label></div>
       <div><button class="btn" data-act="add-activity">Log activity</button></div>
@@ -990,7 +1065,8 @@ async function handleAct(act, el) {
       logActivity(l.id, type, text, date);
       const idx = (k) => STAGES.findIndex((x) => x[0] === k);
       if (type === "applied" && idx(l.stage) < idx("applied")) l.stage = "applied";
-      if ((type === "message" || type === "referral") && idx(l.stage) < idx("warming")) l.stage = "warming";
+      if (type === "referral" && idx(l.stage) < idx("applied")) l.stage = "applied";
+      if (["message", "coffee", "call"].includes(type) && idx(l.stage) < idx("warming")) l.stage = "warming";
       if (type === "interview" && idx(l.stage) < idx("interviewing")) l.stage = "interviewing";
       if (!l.nextFollowUp || l.nextFollowUp <= today()) l.nextFollowUp = daysAhead(type === "applied" ? 7 : 5);
       save(); render(); toast("Activity logged · follow-up " + l.nextFollowUp); break;
@@ -1058,13 +1134,13 @@ document.addEventListener("change", (e) => {
   }
   if (t.dataset.override && l) { l.overrides = l.overrides || {}; if (t.value === "") delete l.overrides[t.dataset.override]; else l.overrides[t.dataset.override] = +t.value; save(); render(); return; }
   if (t.dataset.cfield) { const c = byId(S.companies, t.dataset.cid); c[t.dataset.cfield] = t.value; save(); return; }
-  if (t.dataset.cflag) { const c = byId(S.companies, t.dataset.cid); c[t.dataset.cflag] = t.checked; save(); return; }
+  if (t.dataset.cflag) { const c = byId(S.companies, t.dataset.cid); c[t.dataset.cflag] = t.checked; save(); render(); return; }
   if (t.dataset.pfield) { const p = byId(S.contacts, t.dataset.pid); p[t.dataset.pfield] = t.dataset.pfield === "warmth" ? clamp(+t.value || 0) : t.value; save(); return; }
   if (t.dataset.ppfield) { const p = byId(S.proofPoints, t.dataset.ppid); p[t.dataset.ppfield] = t.dataset.ppfield === "keywords" ? t.value.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean) : t.value; save(); return; }
   if (t.dataset.pptag) { const p = byId(S.proofPoints, t.dataset.ppid); const set = new Set(p.tags || []); t.checked ? set.add(t.dataset.pptag) : set.delete(t.dataset.pptag); p.tags = [...set]; save(); return; }
   if (t.dataset.arch) { S.settings.archPriority[t.dataset.arch] = t.value; save(); return; }
-  const sMap = { "s-homeZone": "homeZone", "s-maxOnsiteDays": "maxOnsiteDays", "s-compFloor": "compFloor", "s-model": "model", "s-profileSummary": "profileSummary" };
-  if (sMap[t.id]) { const k = sMap[t.id]; S.settings[k] = ["maxOnsiteDays", "compFloor"].includes(k) ? (+t.value || 0) : t.value; save(); toast("Saved"); return; }
+  const sMap = { "s-homeZone": "homeZone", "s-maxCommuteHours": "maxCommuteHours", "s-targetLevel": "targetLevel", "s-compFloor": "compFloor", "s-model": "model", "s-profileSummary": "profileSummary" };
+  if (sMap[t.id]) { const k = sMap[t.id]; S.settings[k] = ["maxCommuteHours", "compFloor"].includes(k) ? (+t.value || 0) : t.value; save(); toast("Saved"); return; }
   if (t.id === "s-resumeVersions") { S.settings.resumeVersions = t.value.split("\n").map((s) => s.trim()).filter(Boolean); save(); toast("Saved"); return; }
   if (t.id === "s-useAiScores") { S.settings.useAiScores = t.checked; save(); return; }
   if (t.id === "s-key") { setKey(t.value.trim()); toast(t.value.trim() ? "API key saved in this browser" : "API key removed"); return; }
@@ -1076,7 +1152,8 @@ function readFile(file, fn) { const r = new FileReader(); r.onload = () => fn(r.
 
 function importJSON(text) {
   let d; try { d = JSON.parse(text); } catch (e) { toast("That file isn't valid JSON"); return; }
-  if (d.settings) { delete d.settings.apiKey; S.settings = Object.assign(S.settings, d.settings); S.settings.weights = Object.assign({}, DEFAULT_SETTINGS.weights, S.settings.weights); }
+  if (d.settings && (d.settings.modelVersion || 1) < MODEL_VERSION) { delete d.settings.weights; delete d.settings.maxOnsiteDays; d.settings.modelVersion = MODEL_VERSION; }
+  if (d.settings) { delete d.settings.apiKey; S.settings = Object.assign(S.settings, d.settings); S.settings.weights = Object.fromEntries(FACTORS.map(([k]) => [k, (S.settings.weights || {})[k] ?? DEFAULT_SETTINGS.weights[k]])); }
   if (d.profile) { S.profile = Object.assign(structuredClone(DEFAULT_PROFILE), d.profile); rxCache.clear(); }
   let n = 0;
   for (const k of ["companies", "leads", "contacts", "activities", "proofPoints"]) {

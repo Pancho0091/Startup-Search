@@ -10,18 +10,24 @@ Open `index.html` in a browser. There is nothing to install and no server.
 paste posting / add company ──► parse fields ──► score (0–100) ──► pipeline stage ──► next follow-up
 ```
 
-**Score** = Σ weight × factor / 5, with each factor on a 0–5 scale. Weights are editable in Settings.
+**Score** = fit × access multiplier, then hard gates.
+
+```
+fit    = Σ weight × factor / 5        (factors 0–5, normalized to 100)
+access = 0.6 (cold) … 1.0 (knows you well) … 1.1 (will refer you)
+gates  = capped at 50 if role fit is weak; capped at 40 if below your cash floor
+```
 
 | Factor | Default weight | How it's measured |
 |---|---|---|
-| Role fit | 25 | Keyword-cluster coverage of the posting × role-type priority, minus red flags |
-| Domain | 15 | Talent / HR-tech / future-of-work company |
-| AI relevance | 15 | AI-native company or AI keywords |
-| Access | 20 | Warmest contact you have at the company (0 cold → 5 will refer you) |
-| Timing | 10 | Posting age, or months since the last funding round |
-| Geography | 10 | Commute from your home base, softened by fewer on-site days; remote = 5 |
-| Level | 5 | Lead / Head-of / Manager titles score high; junior titles flagged |
-| Comp | 0 | Range vs. your comp floor (weight it if it matters) |
+| Role fit | 30 | Keyword-cluster coverage of the posting × lane priority, minus red flags (or Claude's read) |
+| Focus fit | 15 | Talent/HR-tech or AI company; only counts fully when role fit is solid |
+| Company health | 15 | Months since last raise (runway proxy), strong lead investor, recent layoffs |
+| Timing | 10 | Postings: age (reposted or 45+ days scores low). Target companies: raise recency |
+| Commute | 15 | Weekly hours in the car: one-way peak minutes × 2 × days on-site. Remote scores 3 (national applicant pool) |
+| Level | 15 | Title vs. your target level, plus "reports to CEO/COO" and team-building scope in the description |
+
+The Today view also tracks weekly targets (5 warm conversations, 3 referred applications, at most 5 cold applications) and shows whether high-scoring leads actually convert better, so the weights can be calibrated against real outcomes.
 
 **Role types** (A–J) are detected from the posting and drive which proof points the tool suggests you lead with:
 A first data hire, B HR-tech / AI recruiting, C BizOps / Strategy & Ops, D People Analytics, E analytics engineer, F ops analytics at hardware / medtech / DTC, G product ops / product analytics, H GTM / RevOps / growth analytics, I AI solutions / deployment, J strategic finance / programs.
