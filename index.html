@@ -192,7 +192,11 @@ const ARCH = {
   C: { name: "BizOps / Strategy & Ops", sig: ["bizops", "business operations", "strategy & operations", "strategy and operations", "chief of staff", "strategic finance", "operations lead", "gtm", "go-to-market", "okr", "planning", "strategic initiatives"] },
   D: { name: "People Analytics", sig: ["people analytics", "people operations", "people ops", "hris", "workday", "attrition", "engagement survey", "headcount", "compensation", "org design"] },
   E: { name: "Analytics engineer", sig: ["analytics engineer", "dbt", "data modeling", "etl", "elt", "airflow", "python", "pipelines", "looker", "semantic layer"] },
-  F: { name: "Ops analytics (hardware / medtech / DTC)", sig: ["supply chain", "manufacturing", "logistics", "production", "inventory", "procurement", "demand planning", "hardware", "medical device", "fulfillment", "returns", "factory", "aerospace", "defense"] }
+  F: { name: "Ops analytics (hardware / medtech / DTC)", sig: ["supply chain", "manufacturing", "logistics", "production", "inventory", "procurement", "demand planning", "hardware", "medical device", "fulfillment", "returns", "factory", "aerospace", "defense"] },
+  G: { name: "Product ops / product analytics", sig: ["product operations", "product ops", "product analytics", "product manager", "data product", "product strategy", "experimentation", "a/b testing", "roadmap", "user research"] },
+  H: { name: "GTM / RevOps / growth analytics", sig: ["revops", "revenue operations", "go-to-market", "gtm", "growth", "marketing analytics", "lifecycle", "retention", "churn", "customer analytics", "pipeline", "salesforce", "hubspot", "ltv", "cac"] },
+  I: { name: "AI solutions / deployment", sig: ["forward deployed", "forward-deployed", "solutions", "implementation", "ai transformation", "ai operations", "customer success", "deployment", "solutions engineer", "consulting", "llm", "agents"] },
+  J: { name: "Strategic finance / programs", sig: ["strategic finance", "fp&a", "financial planning", "business analytics", "program manager", "operations manager", "special projects", "founder's office", "founders office", "budget", "forecast"] }
 };
 
 const ZONES = {
@@ -227,7 +231,7 @@ const DEFAULT_SETTINGS = {
   compFloor: 0,
   minStage: "seed",
   weights: { roleFit: 25, domain: 15, ai: 15, access: 20, timing: 10, geo: 10, level: 5, comp: 0 },
-  archPriority: { A: "primary", B: "primary", C: "primary", D: "other", E: "other", F: "secondary" },
+  archPriority: { A: "primary", B: "primary", C: "primary", D: "other", E: "other", F: "secondary", G: "secondary", H: "secondary", I: "primary", J: "secondary" },
   useAiScores: true,
   model: "claude-opus-5-5",
   profileSummary: "Analytics and strategy professional with 10+ years across data engineering, consulting, operations strategy, and people/talent analytics. MBA in strategy and operations. Builds pipelines and dashboards (SQL, Snowflake, Fivetran, R, Tableau) and translates analysis for executives. Applying AI to automate analytics workflows. Targeting LA/OC startups at Lead / Head-of level.",
@@ -511,7 +515,7 @@ const AI_SCHEMA = {
     onsite_days: { type: "integer", description: "On-site days per week, 0 if unknown" },
     comp_min: { type: "integer", description: "Annual base USD, 0 if not stated" },
     comp_max: { type: "integer", description: "Annual base USD, 0 if not stated" },
-    archetype: { type: "string", enum: ["A", "B", "C", "D", "E", "F"] },
+    archetype: { type: "string", enum: Object.keys(ARCH) },
     role_fit: { type: "integer", description: "0-5 fit between the candidate profile and this role" },
     ai_relevance: { type: "integer", description: "0-5 how central AI is to the company or role" },
     domain_match: { type: "integer", description: "0-5 how much the company works in talent, HR tech, recruiting, or future of work" },

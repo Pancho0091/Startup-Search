@@ -23,8 +23,8 @@ paste posting / add company ──► parse fields ──► score (0–100) ─
 | Level | 5 | Lead / Head-of / Manager titles score high; junior titles flagged |
 | Comp | 0 | Range vs. your comp floor (weight it if it matters) |
 
-**Role types** (A–F) are detected from the posting and drive which proof points the tool suggests you lead with:
-A first data hire, B HR-tech / AI recruiting, C BizOps / Strategy & Ops, D People Analytics, E analytics engineer, F ops analytics at hardware / medtech / DTC companies.
+**Role types** (A–J) are detected from the posting and drive which proof points the tool suggests you lead with:
+A first data hire, B HR-tech / AI recruiting, C BizOps / Strategy & Ops, D People Analytics, E analytics engineer, F ops analytics at hardware / medtech / DTC, G product ops / product analytics, H GTM / RevOps / growth analytics, I AI solutions / deployment, J strategic finance / programs.
 
 **Optional Claude analysis.** Add an Anthropic API key in Settings to get structured extraction plus a "why you fit / gaps / lead with" read on each lead. The key is stored only in your browser and is never exported. This needs the file opened directly or hosted (for example on GitHub Pages).
 
