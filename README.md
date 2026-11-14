@@ -40,7 +40,7 @@ A first data hire, B HR-tech / AI recruiting, C BizOps / Strategy & Ops, D Peopl
 
 The **Watchlist** tab reads company job boards directly from your browser through the public Greenhouse, Ashby, and Lever posting APIs. Press **Check all boards** to pull every open role, keep the ones that match (analytics, strategy, operations, finance, or people roles at senior level, in LA / OC or remote at an LA-based or HR-tech company), and add any of them to your leads with one click.
 
-It ships with a starter list of 32 LA/OC and HR-tech companies, taken from real postings found during research. Add more by pasting a company's careers link (`jobs.ashbyhq.com/…`, `job-boards.greenhouse.io/…`, `jobs.lever.co/…`). Rippling boards and companies without a known board are listed with a link to open or find them.
+It ships with a starter list of 96 companies (81 read automatically): LA/OC startups across industries, an HR-tech named list, and LA hardware, defense, and space companies. Every board address was taken from a real posting URL found during research. New starter companies merge into an existing watchlist automatically; companies you remove stay removed. Add more by pasting a company's careers link (`jobs.ashbyhq.com/…`, `job-boards.greenhouse.io/…`, `jobs.lever.co/…`). Rippling boards and companies without a known board are listed with a link to open or find them.
 
 ## Your data stays out of git
 

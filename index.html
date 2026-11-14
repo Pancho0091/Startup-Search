@@ -618,30 +618,94 @@ const STARTER_WATCHLIST = [
   ["Gallatin AI", "ashby", "gallatin", "Defense logistics AI", "lane1", true],
   ["Corner Health", "lever", "corner-health", "Healthcare services", "lane1", true],
   ["Tala", "lever", "tala", "Fintech", "lane1", true],
+  ["Thrive Market", "lever", "thrivemarket", "Online grocery membership", "lane1", true],
+  ["CreatorIQ", "ashby", "creatoriq", "Creator marketing SaaS (Culver City)", "lane1", true],
+  ["Acorns", "ashby", "acorns", "Consumer fintech (Irvine), late stage", "lane1", true],
+  ["Tapcart", "ashby", "tapcart", "E-commerce mobile apps (Santa Monica)", "lane1", true],
+  ["Zefr", "ashby", "zefr", "AI brand safety / ad-tech (Marina del Rey)", "lane1", true],
+  ["Favorited", "ashby", "favorited", "Consumer social (Santa Monica)", "lane1", true],
+  ["Plug", "ashby", "plugmotors", "Used EV marketplace", "lane1", true],
+  ["Hartbeat", "ashby", "hartbeat", "Media / entertainment (West Hollywood)", "lane1", true],
+  ["Benchmark Sports", "ashby", "Benchmark Sports", "Sports tech (Irvine)", "lane1", true],
+  ["Eventual", "ashby", "eventual", "Data infrastructure (Santa Monica / NY)", "lane1", true],
+  ["Realm", "greenhouse", "realm", "Consumer / proptech (Marina del Rey)", "lane1", true],
+  ["Passes", "greenhouse", "passes", "Creator monetization (Hollywood)", "lane1", true],
+  ["Headspace", "greenhouse", "hs", "Mental health (Santa Monica), late stage", "lane1", true],
+  ["GumGum", "greenhouse", "gumgum", "Contextual ad-tech (Santa Monica)", "lane1", true],
+  ["FabFitFun", "greenhouse", "fabfitfun", "Subscription commerce", "lane1", true],
+  ["Honeylove", "greenhouse", "honeylove", "DTC apparel", "lane1", true],
+  ["EVPassport", "greenhouse", "evpassport", "EV charging (Santa Monica)", "lane1", true],
+  ["O Positiv", "greenhouse", "opositiv", "DTC health", "lane1", true],
+  ["Obsidian Security", "greenhouse", "obsidiansecurity", "SaaS security (Newport Beach)", "lane1", true],
+  ["Finfare Financial", "greenhouse", "finfare-financials", "Fintech (Irvine)", "lane1", true],
+  ["Eudia", "greenhouse", "eudia", "Legal AI (Irvine office)", "lane1", false],
+  ["CloudKitchens (CSS)", "greenhouse", "citystoragesystems", "Food infrastructure, late stage", "lane1", true],
+  ["Our Place", "lever", "our-place", "DTC cookware", "lane1", true],
+  ["VideoAmp", "lever", "videoamp.com", "Media measurement (Santa Monica)", "lane1", true],
+  ["Promenade", "lever", "promenade", "Santa Monica", "lane1", true],
+  ["OpenX", "lever", "openx", "Ad exchange (Pasadena)", "lane1", true],
+  ["Ad Hoc Labs", "lever", "adhoclabs", "Consumer apps (Burner)", "lane1", true],
+  ["Make Rain", "lever", "make-rain", "El Segundo", "lane1", true],
+  ["Complex", "lever", "Complex", "Media / commerce (NTWRK)", "lane1", true],
+  ["Ritual", "rippling", "ritual", "DTC health", "lane1", true],
+  ["MeUndies", "rippling", "meundies-recruiting", "DTC apparel", "lane1", true],
+  ["Swoop", "rippling", "swoopishiring", "Health-tech marketing", "lane1", true],
+  ["Tixr", "rippling", "tixr", "Live event ticketing (Santa Monica)", "lane1", true],
+  ["Sunbit", "other", "", "Fintech (Westwood), uses Comeet", "lane1", true, "https://sunbit.com/careers/"],
+  ["SimplePractice", "other", "", "Health-tech SaaS (Santa Monica), PE-backed", "lane1", true, "https://www.simplepractice.com/careers"],
+  ["Salt AI", "other", "", "AI workflows", "lane1", true, "https://jobs.a16z.com/jobs/salt-ai"],
   ["Ashby", "ashby", "ashby", "HR tech / ATS", "lane2", false],
-  ["Juicebox", "ashby", "Juicebox", "AI recruiting", "lane2", false],
-  ["Mercor", "ashby", "mercor", "AI recruiting", "lane2", false],
+  ["Juicebox", "ashby", "Juicebox", "AI recruiting (SF on-site)", "lane2", false],
+  ["Mercor", "ashby", "mercor", "AI recruiting (SF/NYC in person)", "lane2", false],
   ["Metaview", "ashby", "metaview", "AI recruiting", "lane2", false],
   ["Paraform", "ashby", "paraform", "AI recruiting marketplace", "lane2", false],
+  ["Fama Technologies", "ashby", "fama-technologies-inc", "Hiring screening AI (LA)", "lane2", true],
+  ["Pave", "greenhouse", "paveakatroveinformationtechnologies", "Compensation data (SF/NY)", "lane2", false],
+  ["Findem", "lever", "findem", "Talent intelligence (many remote roles)", "lane2", false],
+  ["ChartHop", "ashby", "charthop", "People analytics / org planning (NY)", "lane2", false],
+  ["SeekOut", "greenhouse", "seekout", "Talent intelligence (remote-friendly)", "lane2", false],
+  ["Workstream", "greenhouse", "workstream", "Hourly hiring / HR (SF)", "lane2", false],
+  ["Handshake", "ashby", "handshake", "Early-career hiring, late stage", "lane2", false],
+  ["Instawork", "greenhouse", "instawork", "Flexible staffing marketplace", "lane2", false],
+  ["WorkWhile", "ashby", "workwhilejobs", "Hourly staffing marketplace", "lane2", false],
+  ["Alex AI", "ashby", "alexai", "AI recruiter (SF in person)", "lane2", false],
+  ["Thatch", "greenhouse", "thatch", "Health benefits (distributed)", "lane2", false],
+  ["Clipboard Health", "ashby", "clipboard", "Healthcare staffing (remote-first)", "lane2", false],
+  ["Warp", "ashby", "warp", "Payroll / HR (NY)", "lane2", false],
+  ["Leapsome", "ashby", "Leapsome", "Performance management (Berlin / NY)", "lane2", false],
+  ["Compa", "other", "", "Comp intelligence (Irvine)", "lane2", true, "https://www.builtinla.com/company/compa/jobs"],
+  ["Rain", "other", "", "Earned wage access", "lane2", true, "https://www.rainapp.com/careers"],
+  ["Bambee", "other", "", "HR for small business (LA)", "lane2", true, "https://www.bambee.com/careers/"],
+  ["Whippy", "other", "", "Messaging for staffing firms (Culver City)", "lane2", true, "https://www.builtinla.com/company/whippy"],
+  ["Gem", "other", "", "Recruiting platform (SF)", "lane2", false, "https://www.gem.com/careers"],
+  ["micro1", "other", "", "AI recruiting / human data (SF)", "lane2", false, "https://jobs.micro1.ai"],
+  ["Hadrian", "ashby", "hadrian-automation", "Defense manufacturing (Torrance)", "opp", true],
   ["Divergent Technologies", "greenhouse", "divergent", "Advanced manufacturing", "opp", true],
   ["CHAOS Industries", "greenhouse", "chaosindustries", "Defense hardware", "opp", true],
   ["Varda Space Industries", "greenhouse", "vardaspace", "Space manufacturing", "opp", true],
   ["Valar Atomics", "greenhouse", "valaratomics", "Nuclear energy", "opp", true],
   ["Nox Metals", "ashby", "nox-metals", "Metals / manufacturing", "opp", true],
   ["First Resonance", "ashby", "first-resonance", "Manufacturing software", "opp", true],
-  ["Ritual", "rippling", "ritual", "DTC health", "lane1", true],
-  ["MeUndies", "rippling", "meundies-recruiting", "DTC apparel", "lane1", true],
-  ["Swoop", "rippling", "swoopishiring", "Health-tech marketing", "lane1", true],
-  ["Compa", "unknown", "", "HR tech / comp intelligence (Irvine)", "lane2", true],
-  ["Sunbit", "unknown", "", "Fintech (Westwood)", "lane1", true],
-  ["SimplePractice", "unknown", "", "Health-tech SaaS (Santa Monica)", "lane1", true],
-  ["Thrive Market", "unknown", "", "Online grocery", "lane1", true],
-  ["Hadrian", "unknown", "", "Defense manufacturing (Torrance)", "opp", true],
-  ["Salt AI", "unknown", "", "AI workflows", "lane1", true],
-  ["Rain", "unknown", "", "Fintech / earned wage access", "lane1", true]
+  ["Radiant Industries", "ashby", "radiant-industries", "Portable nuclear (El Segundo)", "opp", true],
+  ["Rainmaker", "ashby", "rainmaker", "Weather modification (El Segundo)", "opp", true],
+  ["Antares", "ashby", "Antares", "Nuclear microreactors (Torrance)", "opp", true],
+  ["Northwood Space", "ashby", "NorthwoodSpace", "Satellite ground stations", "opp", true],
+  ["Apex Space", "ashby", "apex-technology-inc", "Satellite buses (LA)", "opp", true],
+  ["Outpost", "ashby", "outpost-technologies-corporation", "Space return (Playa Vista)", "opp", true],
+  ["EON", "ashby", "EON", "Seed stage (Culver City)", "opp", true],
+  ["GrayMatter Robotics", "ashby", "graymatter-robotics", "Industrial robotics (Carson)", "opp", true],
+  ["Assured Space", "ashby", "assuredspace", "Space (Irvine, unconfirmed)", "opp", true],
+  ["Arbor Energy", "greenhouse", "arborenergy", "Clean power (El Segundo)", "opp", true],
+  ["Rangeview", "greenhouse", "rangeviewinc", "El Segundo", "opp", true],
+  ["Vast", "greenhouse", "vast", "Space stations (Long Beach)", "opp", true],
+  ["Relativity Space", "greenhouse", "relativity", "Launch (Long Beach), late stage", "opp", true],
+  ["Neros Technologies", "greenhouse", "nerostechnologies", "Defense drones (El Segundo)", "opp", true],
+  ["True Anomaly", "greenhouse", "trueanomalyinc", "Space security (Long Beach site)", "opp", false],
+  ["Kinetic", "rippling", "kinetic", "Automation (Costa Mesa)", "opp", true],
+  ["Hyperice", "other", "", "Recovery devices (Irvine)", "opp", true, "https://hyperice.com/careers"]
 ];
 const LANE_LABEL = { lane1: "Lane 1 · Analytics Lead", lane2: "Lane 2 · HR-tech", opp: "Opportunistic" };
-const ATS_LABEL = { greenhouse: "Greenhouse", ashby: "Ashby", lever: "Lever", rippling: "Rippling (link only)", unknown: "Board not set" };
+const ATS_LABEL = { greenhouse: "Greenhouse", ashby: "Ashby", lever: "Lever", rippling: "Rippling (link only)", other: "Own careers site", unknown: "Board not set" };
 const ROLE_RX = /\b(analytics?|analyst|data|insights?|strateg(y|ic)|operations|ops|bizops|chief of staff|revenue|revops|growth|fp&a|finance|planning|program|people|business intelligence|bi)\b/i;
 const NOT_ROLE_RX = /\b(software|developer|intern(ship)?|technician|machinist|recruiter|sourcer|account executive|sales development|sdr|bdr|nurse|driver|warehouse|assembler|welder|counsel|attorney|designer|scientist|mechanic|electrician|inspector)\b/i;
 const SENIOR_RX = /\b(senior|sr\.?|lead|head|director|manager|principal|staff|chief|vp|vice president)\b/i;
@@ -651,6 +715,7 @@ function boardUrl(w) {
   if (w.ats === "ashby") return "https://jobs.ashbyhq.com/" + w.slug;
   if (w.ats === "lever") return "https://jobs.lever.co/" + w.slug;
   if (w.ats === "rippling") return "https://ats.rippling.com/" + w.slug + "/jobs";
+  if (w.careersUrl) return w.careersUrl;
   return "https://www.google.com/search?q=" + encodeURIComponent(w.name + " careers greenhouse OR ashbyhq OR lever");
 }
 function parseBoardInput(text) {
@@ -715,18 +780,18 @@ function ensureCompanyFor(w) {
 }
 // Bump when STARTER_WATCHLIST grows: new starter companies are merged into existing watchlists
 // (matched by name), without touching entries the user edited or removed.
-const STARTER_VERSION = 2;
+const STARTER_VERSION = 3;
 function ensureWatchlist() {
   const fresh = !Array.isArray(S.watchlist);
   if (!fresh && (S.watchStarterVersion || 1) >= STARTER_VERSION) return;
   if (fresh) S.watchlist = [];
   const removed = new Set(S.watchRemoved || []);
-  for (const [name, ats, slug, sector, lane, hqLA] of STARTER_WATCHLIST) {
+  for (const [name, ats, slug, sector, lane, hqLA, careersUrl] of STARTER_WATCHLIST) {
     const key = name.toLowerCase();
     if (removed.has(key)) continue;
     const ex = S.watchlist.find((w) => w.name.toLowerCase() === key);
-    if (ex) { if (!ex.slug && slug) Object.assign(ex, { ats, slug, jobs: [], status: "", lastChecked: "" }); continue; }
-    S.watchlist.push({ id: uid("w"), name, ats, slug, sector, lane, hqLA, jobs: [], seen: {}, lastChecked: "", status: "" });
+    if (ex) { if (!ex.slug && (slug || careersUrl)) Object.assign(ex, { ats, slug, careersUrl: careersUrl || "", jobs: [], status: "", lastChecked: "" }); continue; }
+    S.watchlist.push({ id: uid("w"), name, ats, slug, careersUrl: careersUrl || "", sector, lane, hqLA, jobs: [], seen: {}, lastChecked: "", status: "" });
   }
   S.watchlist.forEach(ensureCompanyFor);
   S.watchStarterVersion = STARTER_VERSION;
@@ -815,9 +880,9 @@ function viewWatch() {
     <div class="table-wrap"><table><thead><tr><th>Company</th><th>Lane</th><th>Board</th><th>Status</th><th></th></tr></thead><tbody>
       ${companies.map((w) => {
         const n = (w.jobs || []).filter((j) => j.rel && j.rel.ok).length;
-        const status = !w.slug ? '<span class="chip warn">board not set</span>' : w.ats === "rippling" ? '<span class="chip">open the link to check</span>' : !w.lastChecked ? '<span class="chip">not checked</span>' : w.status === "ok" ? `<span class="chip">${w.total} roles · ${n} match${n === 1 ? "" : "es"}</span>` : `<span class="chip over" title="${esc(w.status)}">couldn't read</span>`;
+        const status = w.ats === "other" && w.careersUrl ? '<span class="chip">open the link to check</span>' : !w.slug ? '<span class="chip warn">board not set</span>' : w.ats === "rippling" ? '<span class="chip">open the link to check</span>' : !w.lastChecked ? '<span class="chip">not checked</span>' : w.status === "ok" ? `<span class="chip">${w.total} roles · ${n} match${n === 1 ? "" : "es"}</span>` : `<span class="chip over" title="${esc(w.status)}">couldn't read</span>`;
         return `<tr><td class="title-cell"><strong>${esc(w.name)}</strong><span class="small muted">${esc(w.sector || "")}</span></td><td class="small">${esc(LANE_LABEL[w.lane] || "")}</td><td class="small">${esc(ATS_LABEL[w.ats] || w.ats)}</td><td>${status}${w.status && w.status.startsWith("error") ? `<div class="small muted">${esc(w.status.slice(7))}</div>` : ""}</td>
-          <td><div class="row"><a class="small" href="${esc(boardUrl(w))}" target="_blank" rel="noopener">${w.slug ? "Open board" : "Find board"}</a>${ATS[w.ats] && w.slug ? `<button class="btn ghost small" data-act="watch-one" data-wid="${w.id}">Check</button>` : ""}<button class="btn ghost small danger" data-act="watch-remove" data-wid="${w.id}">Remove</button></div></td></tr>`;
+          <td><div class="row"><a class="small" href="${esc(boardUrl(w))}" target="_blank" rel="noopener">${w.slug || w.careersUrl ? "Open board" : "Find board"}</a>${ATS[w.ats] && w.slug ? `<button class="btn ghost small" data-act="watch-one" data-wid="${w.id}">Check</button>` : ""}<button class="btn ghost small danger" data-act="watch-remove" data-wid="${w.id}">Remove</button></div></td></tr>`;
       }).join("")}
     </tbody></table></div>
   </section>`;
