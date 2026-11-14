@@ -713,10 +713,23 @@ function ensureCompanyFor(w) {
   w.companyId = c.id;
   return c;
 }
+// Bump when STARTER_WATCHLIST grows: new starter companies are merged into existing watchlists
+// (matched by name), without touching entries the user edited or removed.
+const STARTER_VERSION = 2;
 function ensureWatchlist() {
-  if (Array.isArray(S.watchlist)) return;
-  S.watchlist = STARTER_WATCHLIST.map(([name, ats, slug, sector, lane, hqLA]) => ({ id: uid("w"), name, ats, slug, sector, lane, hqLA, jobs: [], seen: {}, lastChecked: "", status: "" }));
+  const fresh = !Array.isArray(S.watchlist);
+  if (!fresh && (S.watchStarterVersion || 1) >= STARTER_VERSION) return;
+  if (fresh) S.watchlist = [];
+  const removed = new Set(S.watchRemoved || []);
+  for (const [name, ats, slug, sector, lane, hqLA] of STARTER_WATCHLIST) {
+    const key = name.toLowerCase();
+    if (removed.has(key)) continue;
+    const ex = S.watchlist.find((w) => w.name.toLowerCase() === key);
+    if (ex) { if (!ex.slug && slug) Object.assign(ex, { ats, slug, jobs: [], status: "", lastChecked: "" }); continue; }
+    S.watchlist.push({ id: uid("w"), name, ats, slug, sector, lane, hqLA, jobs: [], seen: {}, lastChecked: "", status: "" });
+  }
   S.watchlist.forEach(ensureCompanyFor);
+  S.watchStarterVersion = STARTER_VERSION;
   save();
 }
 function jobRelevance(w, j) {
@@ -1334,7 +1347,7 @@ async function handleAct(act, el) {
     }
     case "watch-remove": {
       const w = byId(S.watchlist, el.dataset.wid);
-      if (el.dataset.confirm) { S.watchlist = S.watchlist.filter((x) => x.id !== w.id); save(); render(); toast(w.name + " removed from watchlist"); }
+      if (el.dataset.confirm) { S.watchlist = S.watchlist.filter((x) => x.id !== w.id); S.watchRemoved = [...new Set([...(S.watchRemoved || []), w.name.toLowerCase()])]; save(); render(); toast(w.name + " removed from watchlist"); }
       else { el.dataset.confirm = "1"; el.textContent = "Click again"; }
       break;
     }
