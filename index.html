@@ -601,9 +601,219 @@ async function analyzeWithClaude(lead) {
 }
 
 /* ============================================================
+   Watchlist: read company job boards directly (Greenhouse, Ashby, Lever public APIs)
+   ============================================================ */
+// Board slugs below were taken from real posting URLs found during the agent sweep.
+// lane: "lane1" Analytics Lead (any industry) · "lane2" HR-tech named list · "opp" opportunistic
+// hqLA: remote roles count only when the company is LA/OC-based, or for lane2.
+const STARTER_WATCHLIST = [
+  ["Tatari", "greenhouse", "tatari", "TV ad measurement", "lane1", true],
+  ["Spotter", "greenhouse", "spotter", "Creator economy", "lane1", true],
+  ["Wellth", "greenhouse", "wellth", "Digital health", "lane1", true],
+  ["TubeScience", "greenhouse", "tubescience52", "Performance creative / ad-tech", "lane1", true],
+  ["Flip", "greenhouse", "flip", "Voice AI for commerce", "lane1", true],
+  ["Whatnot", "ashby", "whatnot", "Live commerce marketplace", "lane1", true],
+  ["Paragon", "ashby", "Paragon", "B2B integrations SaaS", "lane1", true],
+  ["Atticus", "ashby", "atticus", "Legal / consumer services", "lane1", true],
+  ["Gallatin AI", "ashby", "gallatin", "Defense logistics AI", "lane1", true],
+  ["Corner Health", "lever", "corner-health", "Healthcare services", "lane1", true],
+  ["Tala", "lever", "tala", "Fintech", "lane1", true],
+  ["Ashby", "ashby", "ashby", "HR tech / ATS", "lane2", false],
+  ["Juicebox", "ashby", "Juicebox", "AI recruiting", "lane2", false],
+  ["Mercor", "ashby", "mercor", "AI recruiting", "lane2", false],
+  ["Metaview", "ashby", "metaview", "AI recruiting", "lane2", false],
+  ["Paraform", "ashby", "paraform", "AI recruiting marketplace", "lane2", false],
+  ["Divergent Technologies", "greenhouse", "divergent", "Advanced manufacturing", "opp", true],
+  ["CHAOS Industries", "greenhouse", "chaosindustries", "Defense hardware", "opp", true],
+  ["Varda Space Industries", "greenhouse", "vardaspace", "Space manufacturing", "opp", true],
+  ["Valar Atomics", "greenhouse", "valaratomics", "Nuclear energy", "opp", true],
+  ["Nox Metals", "ashby", "nox-metals", "Metals / manufacturing", "opp", true],
+  ["First Resonance", "ashby", "first-resonance", "Manufacturing software", "opp", true],
+  ["Ritual", "rippling", "ritual", "DTC health", "lane1", true],
+  ["MeUndies", "rippling", "meundies-recruiting", "DTC apparel", "lane1", true],
+  ["Swoop", "rippling", "swoopishiring", "Health-tech marketing", "lane1", true],
+  ["Compa", "unknown", "", "HR tech / comp intelligence (Irvine)", "lane2", true],
+  ["Sunbit", "unknown", "", "Fintech (Westwood)", "lane1", true],
+  ["SimplePractice", "unknown", "", "Health-tech SaaS (Santa Monica)", "lane1", true],
+  ["Thrive Market", "unknown", "", "Online grocery", "lane1", true],
+  ["Hadrian", "unknown", "", "Defense manufacturing (Torrance)", "opp", true],
+  ["Salt AI", "unknown", "", "AI workflows", "lane1", true],
+  ["Rain", "unknown", "", "Fintech / earned wage access", "lane1", true]
+];
+const LANE_LABEL = { lane1: "Lane 1 · Analytics Lead", lane2: "Lane 2 · HR-tech", opp: "Opportunistic" };
+const ATS_LABEL = { greenhouse: "Greenhouse", ashby: "Ashby", lever: "Lever", rippling: "Rippling (link only)", unknown: "Board not set" };
+const ROLE_RX = /\b(analytics?|analyst|data|insights?|strateg(y|ic)|operations|ops|bizops|chief of staff|revenue|revops|growth|fp&a|finance|planning|program|people|business intelligence|bi)\b/i;
+const NOT_ROLE_RX = /\b(software|developer|intern(ship)?|technician|machinist|recruiter|sourcer|account executive|sales development|sdr|bdr|nurse|driver|warehouse|assembler|welder|counsel|attorney|designer|scientist|mechanic|electrician|inspector)\b/i;
+const SENIOR_RX = /\b(senior|sr\.?|lead|head|director|manager|principal|staff|chief|vp|vice president)\b/i;
+
+function boardUrl(w) {
+  if (w.ats === "greenhouse") return "https://job-boards.greenhouse.io/" + w.slug;
+  if (w.ats === "ashby") return "https://jobs.ashbyhq.com/" + w.slug;
+  if (w.ats === "lever") return "https://jobs.lever.co/" + w.slug;
+  if (w.ats === "rippling") return "https://ats.rippling.com/" + w.slug + "/jobs";
+  return "https://www.google.com/search?q=" + encodeURIComponent(w.name + " careers greenhouse OR ashbyhq OR lever");
+}
+function parseBoardInput(text) {
+  const t = (text || "").trim();
+  let m;
+  if ((m = t.match(/greenhouse\.io\/(?:v1\/boards\/)?([A-Za-z0-9_-]+)/))) return { ats: "greenhouse", slug: m[1] };
+  if ((m = t.match(/ashbyhq\.com\/(?:posting-api\/job-board\/)?([A-Za-z0-9_.%-]+)/))) return { ats: "ashby", slug: decodeURIComponent(m[1]).replace(/\.$/, "") };
+  if ((m = t.match(/lever\.co\/(?:v0\/postings\/)?([A-Za-z0-9_-]+)/))) return { ats: "lever", slug: m[1] };
+  if ((m = t.match(/rippling\.com\/(?:[a-z-]+\/)?([A-Za-z0-9_-]+)\/jobs/))) return { ats: "rippling", slug: m[1] };
+  return null;
+}
+function htmlToText(html) {
+  const d = document.createElement("div");
+  d.innerHTML = html || "";
+  if (/&lt;|&gt;/.test(d.textContent) && !/<[a-z]/i.test(html)) { const d2 = document.createElement("div"); d2.innerHTML = d.textContent; return d2.textContent.replace(/\s+\n/g, "\n").trim(); }
+  return d.textContent.replace(/\s+\n/g, "\n").trim();
+}
+function isoDay(v) { if (!v) return ""; const d = new Date(v); return isNaN(d) ? "" : d.toISOString().slice(0, 10); }
+
+// Each adapter returns a normalized list: {id, title, url, location, workplace, posted, compMin, compMax, desc}
+const ATS = {
+  async greenhouse(slug) {
+    const r = await fetch("https://boards-api.greenhouse.io/v1/boards/" + encodeURIComponent(slug) + "/jobs?content=true");
+    if (!r.ok) throw new Error("Greenhouse returned " + r.status);
+    const d = await r.json();
+    return (d.jobs || []).map((j) => {
+      const desc = htmlToText(j.content).slice(0, 6000), p = parseJD(desc);
+      const loc = (j.location && j.location.name) || "";
+      return { id: "gh" + j.id, title: j.title, url: j.absolute_url, location: loc, workplace: /remote/i.test(loc) ? "remote" : (p.workplace || "unknown"), onsiteDays: p.onsiteDays || 0, posted: isoDay(j.first_published || j.updated_at), compMin: p.compMin || 0, compMax: p.compMax || 0, desc };
+    });
+  },
+  async ashby(slug) {
+    const r = await fetch("https://api.ashbyhq.com/posting-api/job-board/" + encodeURIComponent(slug) + "?includeCompensation=true");
+    if (!r.ok) throw new Error("Ashby returned " + r.status);
+    const d = await r.json();
+    return (d.jobs || []).filter((j) => j.isListed !== false).map((j) => {
+      const desc = (j.descriptionPlain || htmlToText(j.descriptionHtml)).slice(0, 6000), p = parseJD(desc);
+      const comp = ((j.compensation && j.compensation.summaryComponents) || []).find((c) => /salary/i.test(c.compensationType || ""));
+      const wt = (j.workplaceType || "").toLowerCase();
+      const loc = [j.location, ...((j.secondaryLocations || []).map((x) => x.location))].filter(Boolean).join(" / ");
+      return { id: "ab" + j.id, title: j.title, url: j.jobUrl, location: loc, workplace: j.isRemote || wt === "remote" ? "remote" : wt === "hybrid" ? "hybrid" : wt === "onsite" ? "onsite" : (p.workplace || "unknown"), onsiteDays: p.onsiteDays || 0, posted: isoDay(j.publishedAt), compMin: (comp && comp.minValue) || p.compMin || 0, compMax: (comp && comp.maxValue) || p.compMax || 0, desc };
+    });
+  },
+  async lever(slug) {
+    const r = await fetch("https://api.lever.co/v0/postings/" + encodeURIComponent(slug) + "?mode=json");
+    if (!r.ok) throw new Error("Lever returned " + r.status);
+    const d = await r.json();
+    return (Array.isArray(d) ? d : []).map((j) => {
+      const desc = (j.descriptionPlain || "") + "\n" + (j.lists || []).map((l) => l.text + "\n" + htmlToText(l.content)).join("\n") + "\n" + (j.additionalPlain || "");
+      const p = parseJD(desc), wt = (j.workplaceType || "").toLowerCase(), loc = (j.categories && (j.categories.allLocations || [j.categories.location]).filter(Boolean).join(" / ")) || "";
+      return { id: "lv" + j.id, title: j.text, url: j.hostedUrl, location: loc, workplace: wt === "remote" ? "remote" : wt === "hybrid" ? "hybrid" : wt === "on-site" || wt === "onsite" ? "onsite" : (p.workplace || "unknown"), onsiteDays: p.onsiteDays || 0, posted: isoDay(j.createdAt), compMin: (j.salaryRange && j.salaryRange.min) || p.compMin || 0, compMax: (j.salaryRange && j.salaryRange.max) || p.compMax || 0, desc: desc.slice(0, 6000) };
+    });
+  }
+};
+
+function ensureCompanyFor(w) {
+  let c = w.companyId && byId(S.companies, w.companyId);
+  if (!c) c = S.companies.find((x) => x.name.toLowerCase() === w.name.toLowerCase());
+  if (!c) { c = { id: uid("c"), name: w.name, stage: "", lastRaiseDate: "", sector: w.sector || "", website: "", aiNative: /\bai\b/i.test(w.sector || ""), domainMatch: w.lane === "lane2", notes: "" }; S.companies.push(c); }
+  w.companyId = c.id;
+  return c;
+}
+function ensureWatchlist() {
+  if (Array.isArray(S.watchlist)) return;
+  S.watchlist = STARTER_WATCHLIST.map(([name, ats, slug, sector, lane, hqLA]) => ({ id: uid("w"), name, ats, slug, sector, lane, hqLA, jobs: [], seen: {}, lastChecked: "", status: "" }));
+  S.watchlist.forEach(ensureCompanyFor);
+  save();
+}
+function jobRelevance(w, j) {
+  const why = [];
+  const zone = detectZone(j.location || "");
+  const remote = j.workplace === "remote" || zone === "remote";
+  const roleOk = ROLE_RX.test(j.title) && !(NOT_ROLE_RX.test(j.title) && !/analytics engineer/i.test(j.title));
+  const seniorOk = SENIOR_RX.test(j.title);
+  const placeOk = (zone !== "other" && zone !== "unknown" && zone !== "remote") || (remote && (w.lane === "lane2" || w.hqLA)) || (zone === "unknown" && w.hqLA);
+  if (!roleOk) why.push("role"); if (!seniorOk) why.push("level"); if (!placeOk) why.push("location");
+  return { ok: roleOk && seniorOk && placeOk, why, zone: remote ? "remote" : zone };
+}
+function jobAsLead(w, j, rel) {
+  return { id: "__w" + j.id, companyId: w.companyId, kind: "posting", title: j.title, url: j.url, jd: j.desc, location: j.location, zone: rel.zone, workplace: j.workplace, onsiteDays: j.onsiteDays || 0, compMin: j.compMin, compMax: j.compMax, postedDate: j.posted, foundDate: today(), stage: "discovered", overrides: {}, ai: null, notes: "", source: "Watchlist (" + ATS_LABEL[w.ats] + ")" };
+}
+let watchBusy = false, watchProgress = "", watchShowAll = false;
+async function checkBoard(w) {
+  if (!ATS[w.ats] || !w.slug) return;
+  try {
+    const jobs = await ATS[w.ats](w.slug);
+    w.jobs = jobs.map((j) => ({ ...j, rel: jobRelevance(w, j) }));
+    w.status = "ok"; w.total = jobs.length;
+  } catch (e) {
+    w.status = "error: " + (e.message === "Failed to fetch" ? "couldn't reach the board (blocked by the browser or offline)" : e.message);
+  }
+  w.lastChecked = new Date().toISOString();
+}
+async function checkAllBoards() {
+  if (watchBusy) return;
+  watchBusy = true;
+  const queue = S.watchlist.filter((w) => ATS[w.ats] && w.slug);
+  let done = 0;
+  const worker = async () => { while (queue.length) { const w = queue.shift(); await checkBoard(w); done++; watchProgress = `Checked ${done} of ${done + queue.length}`; if (current === "watch") render(); } };
+  await Promise.all([worker(), worker(), worker(), worker()]);
+  watchBusy = false; watchProgress = ""; save(); render();
+  const fresh = watchMatches().filter((m) => !m.w.seen[m.j.id]).length;
+  toast(fresh ? fresh + " new matching role(s)" : "No new matching roles");
+}
+function watchMatches() {
+  const out = [];
+  for (const w of S.watchlist || []) for (const j of w.jobs || []) if (watchShowAll || (j.rel && j.rel.ok)) out.push({ w, j });
+  return out;
+}
+
+function viewWatch() {
+  ensureWatchlist();
+  const matches = watchMatches().filter((m) => m.w.seen[m.j.id] !== "hidden" && m.w.seen[m.j.id] !== "added")
+    .map((m) => ({ ...m, s: score(jobAsLead(m.w, m.j, m.j.rel)), isNew: !m.w.seen[m.j.id] }))
+    .sort((a, b) => (b.isNew - a.isNew) || (b.s - a.s));
+  const checked = S.watchlist.filter((w) => w.lastChecked).map((w) => w.lastChecked).sort().pop();
+  const apiCount = S.watchlist.filter((w) => ATS[w.ats] && w.slug).length;
+  const laneOrder = { lane1: 0, lane2: 1, opp: 2 };
+  const companies = [...S.watchlist].sort((a, b) => (laneOrder[a.lane] - laneOrder[b.lane]) || a.name.localeCompare(b.name));
+  return `
+  <section class="panel stack">
+    <div class="panel-head"><h2>Open roles at your watchlist companies</h2>
+      <span class="muted small">${checked ? "Last checked " + esc(checked.slice(0, 16).replace("T", " ")) + " UTC" : "Not checked yet"} · ${apiCount} boards readable automatically</span></div>
+    <div class="row">
+      <button class="btn primary" data-act="watch-check" ${watchBusy ? "disabled" : ""}>${watchBusy ? esc(watchProgress || "Checking…") : "Check all boards"}</button>
+      <label class="row small"><input type="checkbox" id="watch-all" ${watchShowAll ? "checked" : ""}> Show every role, not just matches</label>
+      ${matches.some((m) => m.isNew) ? '<button class="btn ghost" data-act="watch-seen">Mark all as seen</button>' : ""}
+    </div>
+    <p class="small muted" style="margin:0">Matches are roles with an analytics, strategy, operations, finance, or people focus, at senior level or above, in LA / OC (or remote at an LA-based or HR-tech company). Adding one creates a lead with the full description, so it gets scored like any other.</p>
+    ${matches.length ? `<div class="table-wrap"><table><thead><tr><th>Score</th><th>Role</th><th>Company</th><th class="hide-sm">Where</th><th>Posted</th><th></th></tr></thead><tbody>
+      ${matches.map((m) => `<tr><td><span class="${pillClass(m.s)}">${m.s}</span></td>
+        <td class="title-cell"><strong>${esc(m.j.title)}</strong>${m.isNew ? ' <span class="chip due">new</span>' : ""}${m.j.compMax ? `<div class="small muted num">${money(m.j.compMin)}–${money(m.j.compMax)}</div>` : ""}${watchShowAll && !m.j.rel.ok ? `<div class="small muted">not a match: ${esc(m.j.rel.why.join(", "))}</div>` : ""}</td>
+        <td>${esc(m.w.name)}<div class="small muted">${esc(LANE_LABEL[m.w.lane] || "")}</div></td>
+        <td class="hide-sm small">${esc(m.j.location)}<div class="muted">${esc(m.j.workplace !== "unknown" ? m.j.workplace : "")}</div></td>
+        <td class="num small">${esc(m.j.posted)}</td>
+        <td><div class="row"><button class="btn small" data-act="watch-add" data-wid="${m.w.id}" data-jid="${esc(m.j.id)}">Add</button><button class="btn ghost small" data-act="watch-hide" data-wid="${m.w.id}" data-jid="${esc(m.j.id)}">Hide</button><a class="small" href="${esc(m.j.url)}" target="_blank" rel="noopener">Open</a></div></td></tr>`).join("")}
+    </tbody></table></div>` : `<div class="empty">${checked ? "No matching open roles right now. Boards are re-checked whenever you press Check all boards." : "Press Check all boards to read every company's job board."}</div>`}
+  </section>
+  <section class="panel stack">
+    <div class="panel-head"><h2>Companies you're watching</h2><span class="muted small">${S.watchlist.length} companies</span></div>
+    <div class="form-grid" style="align-items:end">
+      <label class="field"><span>Company</span><input type="text" id="w-name" placeholder="e.g. Snap"></label>
+      <label class="field"><span>Job board link</span><input type="url" id="w-board" placeholder="https://jobs.ashbyhq.com/…"></label>
+      <label class="field"><span>Lane</span><select id="w-lane">${Object.entries(LANE_LABEL).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label>
+      <label class="row small"><input type="checkbox" id="w-hq" checked> Based in LA / OC</label>
+      <button class="btn" data-act="watch-addco">Add company</button>
+    </div>
+    <p class="small muted" style="margin:0">Paste the company's careers link from Greenhouse, Ashby, Lever, or Rippling. For a company marked "Board not set", use Find board, then paste the link here under the same name to update it.</p>
+    <div class="table-wrap"><table><thead><tr><th>Company</th><th>Lane</th><th>Board</th><th>Status</th><th></th></tr></thead><tbody>
+      ${companies.map((w) => {
+        const n = (w.jobs || []).filter((j) => j.rel && j.rel.ok).length;
+        const status = !w.slug ? '<span class="chip warn">board not set</span>' : w.ats === "rippling" ? '<span class="chip">open the link to check</span>' : !w.lastChecked ? '<span class="chip">not checked</span>' : w.status === "ok" ? `<span class="chip">${w.total} roles · ${n} match${n === 1 ? "" : "es"}</span>` : `<span class="chip over" title="${esc(w.status)}">couldn't read</span>`;
+        return `<tr><td class="title-cell"><strong>${esc(w.name)}</strong><span class="small muted">${esc(w.sector || "")}</span></td><td class="small">${esc(LANE_LABEL[w.lane] || "")}</td><td class="small">${esc(ATS_LABEL[w.ats] || w.ats)}</td><td>${status}${w.status && w.status.startsWith("error") ? `<div class="small muted">${esc(w.status.slice(7))}</div>` : ""}</td>
+          <td><div class="row"><a class="small" href="${esc(boardUrl(w))}" target="_blank" rel="noopener">${w.slug ? "Open board" : "Find board"}</a>${ATS[w.ats] && w.slug ? `<button class="btn ghost small" data-act="watch-one" data-wid="${w.id}">Check</button>` : ""}<button class="btn ghost small danger" data-act="watch-remove" data-wid="${w.id}">Remove</button></div></td></tr>`;
+      }).join("")}
+    </tbody></table></div>
+  </section>`;
+}
+
+/* ============================================================
    Rendering
    ============================================================ */
-const VIEWS = [["today", "Today"], ["pipeline", "Pipeline"], ["leads", "Leads"], ["add", "Add lead"], ["network", "Companies & contacts"], ["proof", "Proof points"], ["settings", "Settings"]];
+const VIEWS = [["today", "Today"], ["watch", "Watchlist"], ["pipeline", "Pipeline"], ["leads", "Leads"], ["add", "Add lead"], ["network", "Companies & contacts"], ["proof", "Proof points"], ["settings", "Settings"]];
 let current = (location.hash || "").slice(1);
 if (!VIEWS.some((v) => v[0] === current)) current = "today";
 let openLeadId = null;
@@ -649,7 +859,7 @@ function sampleBanner() {
 function render() {
   renderTabs();
   const v = document.getElementById("view");
-  const fn = { today: viewToday, pipeline: viewPipeline, leads: viewLeads, add: viewAdd, network: viewNetwork, proof: viewProof, settings: viewSettings }[current];
+  const fn = { today: viewToday, watch: viewWatch, pipeline: viewPipeline, leads: viewLeads, add: viewAdd, network: viewNetwork, proof: viewProof, settings: viewSettings }[current];
   v.innerHTML = sampleBanner() + fn();
   if (current === "add") bindAdd();
   if (current === "pipeline") bindBoard();
@@ -1108,6 +1318,37 @@ async function handleAct(act, el) {
       const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "startup-search-backup-" + today() + ".json"; document.body.appendChild(a); a.click(); a.remove();
       toast("Backup downloaded (if your browser allows downloads here)"); break;
     }
+    case "watch-check": checkAllBoards(); render(); break;
+    case "watch-one": { const w = byId(S.watchlist, el.dataset.wid); el.disabled = true; await checkBoard(w); save(); render(); toast(w.status === "ok" ? w.name + ": " + w.total + " open roles" : w.name + ": couldn't read the board"); break; }
+    case "watch-seen": for (const m of watchMatches()) if (!m.w.seen[m.j.id]) m.w.seen[m.j.id] = "seen"; save(); render(); break;
+    case "watch-hide": { const w = byId(S.watchlist, el.dataset.wid); w.seen[el.dataset.jid] = "hidden"; save(); render(); break; }
+    case "watch-add": {
+      const w = byId(S.watchlist, el.dataset.wid), j = (w.jobs || []).find((x) => x.id === el.dataset.jid);
+      if (!j) return;
+      ensureCompanyFor(w);
+      const dup = S.leads.find((l) => l.url && l.url === j.url);
+      if (dup) { w.seen[j.id] = "added"; save(); openLeadId = dup.id; render(); toast("Already in your leads"); return; }
+      const lead = jobAsLead(w, j, j.rel || jobRelevance(w, j)); lead.id = uid("l");
+      S.leads.push(lead); logActivity(lead.id, "note", "Added from watchlist"); w.seen[j.id] = "added";
+      save(); openLeadId = lead.id; render(); toast("Lead added"); break;
+    }
+    case "watch-remove": {
+      const w = byId(S.watchlist, el.dataset.wid);
+      if (el.dataset.confirm) { S.watchlist = S.watchlist.filter((x) => x.id !== w.id); save(); render(); toast(w.name + " removed from watchlist"); }
+      else { el.dataset.confirm = "1"; el.textContent = "Click again"; }
+      break;
+    }
+    case "watch-addco": {
+      const name = document.getElementById("w-name").value.trim(), board = parseBoardInput(document.getElementById("w-board").value);
+      if (!name) { toast("Add the company name"); return; }
+      const lane = document.getElementById("w-lane").value, hqLA = document.getElementById("w-hq").checked;
+      let w = S.watchlist.find((x) => x.name.toLowerCase() === name.toLowerCase());
+      if (w) { if (board) Object.assign(w, board, { jobs: [], status: "", lastChecked: "" }); w.lane = lane; w.hqLA = hqLA; }
+      else { w = { id: uid("w"), name, ats: board ? board.ats : "unknown", slug: board ? board.slug : "", sector: "", lane, hqLA, jobs: [], seen: {}, lastChecked: "", status: "" }; S.watchlist.push(w); }
+      ensureCompanyFor(w); save();
+      if (ATS[w.ats] && w.slug) { await checkBoard(w); save(); }
+      render(); toast(board ? w.name + " saved" : w.name + " saved; add its job board link to read it automatically"); break;
+    }
     case "copy-json":
       try { await navigator.clipboard.writeText(JSON.stringify(S)); toast("Backup JSON copied"); } catch (err) { toast("Copy was blocked; use Download backup"); }
       break;
@@ -1145,6 +1386,7 @@ document.addEventListener("change", (e) => {
   if (t.id === "s-useAiScores") { S.settings.useAiScores = t.checked; save(); return; }
   if (t.id === "s-key") { setKey(t.value.trim()); toast(t.value.trim() ? "API key saved in this browser" : "API key removed"); return; }
   if (t.id === "s-import" && t.files[0]) { readFile(t.files[0], importJSON); t.value = ""; return; }
+  if (t.id === "watch-all") { watchShowAll = t.checked; render(); return; }
   if (t.id === "s-csv" && t.files[0]) { readFile(t.files[0], importCSV); t.value = ""; return; }
 });
 function rerenderKeepFocus(input) { const pos = input.selectionStart; render(); const el = document.getElementById(input.id); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) { /* ignore */ } } }
@@ -1156,6 +1398,7 @@ function importJSON(text) {
   if (d.settings) { delete d.settings.apiKey; S.settings = Object.assign(S.settings, d.settings); S.settings.weights = Object.fromEntries(FACTORS.map(([k]) => [k, (S.settings.weights || {})[k] ?? DEFAULT_SETTINGS.weights[k]])); }
   if (d.profile) { S.profile = Object.assign(structuredClone(DEFAULT_PROFILE), d.profile); rxCache.clear(); }
   let n = 0;
+  if (Array.isArray(d.watchlist)) { S.watchlist = S.watchlist || []; for (const item of d.watchlist) { const i = S.watchlist.findIndex((x) => x.id === item.id || x.name.toLowerCase() === item.name.toLowerCase()); if (i >= 0) S.watchlist[i] = item; else S.watchlist.push(item); } }
   for (const k of ["companies", "leads", "contacts", "activities", "proofPoints"]) {
     if (!Array.isArray(d[k])) continue;
     for (const item of d[k]) { const i = S[k].findIndex((x) => x.id === item.id); if (i >= 0) S[k][i] = item; else S[k].push(item); n++; }
@@ -1196,6 +1439,7 @@ function importCSV(text) {
   save(); render(); toast("Imported " + n + " leads");
 }
 
+ensureWatchlist();
 render();
 </script>
 </body>

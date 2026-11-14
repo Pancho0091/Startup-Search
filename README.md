@@ -36,6 +36,12 @@ A first data hire, B HR-tech / AI recruiting, C BizOps / Strategy & Ops, D Peopl
 
 **Optional Claude analysis.** Add an Anthropic API key in Settings to get structured extraction plus a "why you fit / gaps / lead with" read on each lead. The key is stored only in your browser and is never exported. This needs the file opened directly or hosted (for example on GitHub Pages).
 
+## Watchlist
+
+The **Watchlist** tab reads company job boards directly from your browser through the public Greenhouse, Ashby, and Lever posting APIs. Press **Check all boards** to pull every open role, keep the ones that match (analytics, strategy, operations, finance, or people roles at senior level, in LA / OC or remote at an LA-based or HR-tech company), and add any of them to your leads with one click.
+
+It ships with a starter list of 32 LA/OC and HR-tech companies, taken from real postings found during research. Add more by pasting a company's careers link (`jobs.ashbyhq.com/…`, `job-boards.greenhouse.io/…`, `jobs.lever.co/…`). Rippling boards and companies without a known board are listed with a link to open or find them.
+
 ## Your data stays out of git
 
 All leads, contacts, and settings live in your browser's local storage. Use **Settings → Download backup** regularly. The `private/` folder and backup files are git-ignored, so a personal profile file (settings + proof points) can sit next to the tool and be loaded with **Settings → Import**.
