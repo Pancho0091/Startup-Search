@@ -1,0 +1,1121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Startup Search</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: sticky top bar with view tabs; each view is a single column of panels; lead detail opens in a right-hand drawer (full screen on phones). */
+:root {
+  --bg: #f3f6f7;
+  --surface: #ffffff;
+  --surface-2: #eaf0f2;
+  --ink: #15222b;
+  --muted: #5a6a75;
+  --line: #d6dee3;
+  --accent: #0d7680;
+  --accent-ink: #ffffff;
+  --accent-soft: #d8eef0;
+  --sodium: #b86e06;
+  --sodium-soft: #fbecd3;
+  --good: #2c7f47;
+  --good-soft: #dcefe2;
+  --bad: #b23c17;
+  --bad-soft: #f8e1d8;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --radius: 8px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e161c; --surface: #15212a; --surface-2: #1c2b35; --ink: #e2eaef; --muted: #93a5b1; --line: #263642;
+    --accent: #3fb4bd; --accent-ink: #052326; --accent-soft: #143840; --sodium: #f0a640; --sodium-soft: #3a2a12;
+    --good: #5cc27d; --good-soft: #17331f; --bad: #f08560; --bad-soft: #3a1c12; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e161c; --surface: #15212a; --surface-2: #1c2b35; --ink: #e2eaef; --muted: #93a5b1; --line: #263642;
+  --accent: #3fb4bd; --accent-ink: #052326; --accent-soft: #143840; --sodium: #f0a640; --sodium-soft: #3a2a12;
+  --good: #5cc27d; --good-soft: #17331f; --bad: #f08560; --bad-soft: #3a1c12; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--font-body); }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.2; margin: 0; text-wrap: balance; }
+h2 { font-size: 1.15rem; }
+h3 { font-size: 0.95rem; }
+a { color: var(--accent); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono, .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--surface); }
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--surface); border-bottom: 1px solid var(--line); }
+.topbar-inner { max-width: 1240px; margin: 0 auto; padding-block: 10px 0; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.brand h1 { font-size: 1.25rem; letter-spacing: -0.01em; }
+.brand .sub { color: var(--muted); font-size: 12px; }
+.tabs { display: flex; gap: 2px; overflow-x: auto; margin-top: 8px; scrollbar-width: none; }
+.tabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 12px; cursor: pointer; color: var(--muted); font-weight: 600; white-space: nowrap; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs .count { font-family: var(--font-mono); font-size: 11px; margin-left: 4px; color: var(--muted); }
+
+main { max-width: 1240px; margin: 0 auto; padding-block: 20px 60px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 20px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; min-width: 0; }
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+.grid-2 > * { min-width: 0; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.stack { display: grid; gap: 10px; }
+.banner { background: var(--sodium-soft); color: var(--ink); border: 1px solid var(--sodium); border-radius: var(--radius); padding: 10px 14px; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+
+.btn { border: 1px solid var(--line); background: var(--surface); padding: 7px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.danger { color: var(--bad); }
+.btn.ghost { border-color: transparent; background: none; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.field { display: grid; gap: 4px; min-width: 0; }
+.field > span { font-size: 12px; color: var(--muted); font-weight: 600; }
+input[type=text], input[type=url], input[type=date], input[type=number], input[type=password], input[type=search], select, textarea {
+  width: 100%; min-width: 0; border: 1px solid var(--line); background: var(--bg); border-radius: 6px; padding: 7px 9px;
+}
+textarea { resize: vertical; min-height: 80px; line-height: 1.45; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.form-grid .wide { grid-column: 1 / -1; }
+
+.pill { display: inline-flex; align-items: center; justify-content: center; min-width: 38px; padding: 2px 8px; border-radius: 999px; font-family: var(--font-mono); font-size: 12px; font-weight: 500; background: var(--surface-2); color: var(--muted); font-variant-numeric: tabular-nums; }
+.pill.hi { background: var(--good-soft); color: var(--good); }
+.pill.mid { background: var(--accent-soft); color: var(--accent); }
+.chip { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+.chip.arch { background: var(--accent-soft); color: var(--accent); font-family: var(--font-mono); }
+.chip.due { background: var(--sodium-soft); color: var(--sodium); }
+.chip.over { background: var(--bad-soft); color: var(--bad); }
+.chip.warn { background: var(--bad-soft); color: var(--bad); }
+
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; padding: 8px; border-bottom: 1px solid var(--line); white-space: nowrap; cursor: pointer; user-select: none; }
+th[data-sorted]::after { content: attr(data-sorted); margin-left: 4px; }
+td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--surface-2); }
+.title-cell strong { display: block; }
+
+.board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; align-items: flex-start; }
+.col { flex: 0 0 230px; background: var(--surface-2); border-radius: var(--radius); padding: 8px; min-height: 120px; }
+.col.drop { outline: 2px dashed var(--accent); }
+.col-head { display: flex; justify-content: space-between; padding: 4px 6px 8px; font-weight: 700; font-family: var(--font-display); font-size: 13px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 9px; margin-bottom: 8px; cursor: pointer; display: grid; gap: 4px; }
+.card:hover { border-color: var(--accent); }
+.card .top { display: flex; justify-content: space-between; gap: 6px; align-items: start; }
+.card .t { font-weight: 600; line-height: 1.3; }
+
+.list-item { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: center; cursor: pointer; }
+.list-item:last-child { border-bottom: 0; }
+.list-item .main { min-width: 0; }
+.list-item .main div { overflow-wrap: anywhere; }
+.empty { color: var(--muted); padding: 12px 0; }
+
+.funnel { display: grid; gap: 6px; }
+.funnel-row { display: grid; grid-template-columns: 110px 1fr 36px; gap: 8px; align-items: center; font-size: 13px; }
+.bar { height: 10px; border-radius: 3px; background: var(--accent); min-width: 2px; }
+.bar-track { background: var(--surface-2); border-radius: 3px; }
+
+.factors { display: grid; gap: 6px; }
+.factor { display: grid; grid-template-columns: 120px 1fr 56px; gap: 8px; align-items: center; font-size: 13px; }
+.factor .track { height: 8px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+.factor .fill { height: 100%; background: var(--accent); }
+.factor .fill.ai { background: var(--sodium); }
+
+.drawer-back { position: fixed; inset: 0; background: rgb(0 0 0 / 0.35); z-index: 40; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(640px, 100%); background: var(--bg); z-index: 50; overflow-y: auto; border-left: 1px solid var(--line);
+  padding-top: max(16px, env(safe-area-inset-top, 0px)); padding-bottom: max(24px, env(safe-area-inset-bottom, 0px)); padding-left: 18px; padding-right: max(18px, env(safe-area-inset-right, 0px)); display: grid; gap: 16px; align-content: start; }
+.drawer-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+.score-big { font-family: var(--font-mono); font-size: 32px; line-height: 1; font-weight: 500; }
+.bullets { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.toast { position: fixed; bottom: max(16px, env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 6px; z-index: 60; font-weight: 600; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; background: var(--surface); padding: 6px 12px; cursor: pointer; font-weight: 600; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.weights { display: grid; gap: 8px; }
+.weight-row { display: grid; grid-template-columns: 130px 1fr 44px; gap: 10px; align-items: center; }
+.weight-row input { width: 100%; }
+details summary { cursor: pointer; font-weight: 600; }
+@media (max-width: 560px) {
+  .factor { grid-template-columns: 96px 1fr 50px; }
+  .weight-row { grid-template-columns: 100px 1fr 40px; }
+  .hide-sm { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><h1>Startup Search</h1><span class="sub">LA / OC startup leads, scored against your profile</span></div>
+    <nav class="tabs" role="tablist" id="tabs"></nav>
+  </div>
+</header>
+<main id="view"></main>
+<div id="drawer-root"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   Constants: stages, role types, geography
+   ============================================================ */
+const STORE_KEY = "startup-search:v1";
+const KEY_STORE = "startup-search:apikey"; // never exported
+
+const STAGES = [
+  ["discovered", "Discovered"], ["researching", "Researching"], ["warming", "Warming"],
+  ["applied", "Applied"], ["screening", "Screening"], ["interviewing", "Interviewing"],
+  ["offer", "Offer"], ["accepted", "Accepted"], ["declined", "Declined"],
+  ["parked", "Parked"], ["dead", "Dead"]
+];
+const STAGE_LABEL = Object.fromEntries(STAGES);
+const ACTIVE = ["discovered", "researching", "warming", "applied", "screening", "interviewing", "offer"];
+
+const ARCH = {
+  A: { name: "First data hire / Head of Analytics", sig: ["first data", "founding", "head of data", "head of analytics", "analytics lead", "data infrastructure", "data stack", "zero to one", "0 to 1", "0-1", "build our data", "self-serve analytics"] },
+  B: { name: "HR-tech / AI recruiting", sig: ["recruit", "recruiting", "recruiter", "talent acquisition", "hiring", "ats", "hr tech", "hrtech", "candidate", "job seekers", "employer", "workforce", "talent"] },
+  C: { name: "BizOps / Strategy & Ops", sig: ["bizops", "business operations", "strategy & operations", "strategy and operations", "chief of staff", "strategic finance", "operations lead", "gtm", "go-to-market", "okr", "planning", "strategic initiatives"] },
+  D: { name: "People Analytics", sig: ["people analytics", "people operations", "people ops", "hris", "workday", "attrition", "engagement survey", "headcount", "compensation", "org design"] },
+  E: { name: "Analytics engineer", sig: ["analytics engineer", "dbt", "data modeling", "etl", "elt", "airflow", "python", "pipelines", "looker", "semantic layer"] },
+  F: { name: "Ops analytics (hardware / medtech / DTC)", sig: ["supply chain", "manufacturing", "logistics", "production", "inventory", "procurement", "demand planning", "hardware", "medical device", "fulfillment", "returns", "factory", "aerospace", "defense"] }
+};
+
+const ZONES = {
+  westside: { label: "Westside / South Bay", kw: ["santa monica", "venice", "playa vista", "playa del rey", "culver city", "marina del rey", "el segundo", "hawthorne", "manhattan beach", "hermosa beach", "redondo beach", "torrance", "inglewood", "westwood", "west los angeles", "west la", "century city", "beverly hills", "brentwood", "mar vista", "gardena", "carson", "silicon beach"] },
+  central: { label: "Central LA / Pasadena", kw: ["downtown los angeles", "dtla", "hollywood", "silver lake", "echo park", "arts district", "koreatown", "pasadena", "glendale", "burbank", "vernon", "los feliz", "atwater village", "eagle rock", "highland park"] },
+  valley: { label: "San Fernando Valley / Conejo", kw: ["sherman oaks", "studio city", "van nuys", "encino", "woodland hills", "chatsworth", "north hollywood", "calabasas", "canoga park", "thousand oaks", "westlake village", "agoura hills"] },
+  longbeach: { label: "Long Beach / Gateway", kw: ["long beach", "signal hill", "cerritos", "lakewood", "downey", "san pedro"] },
+  oc: { label: "Orange County", kw: ["irvine", "costa mesa", "newport beach", "tustin", "santa ana", "anaheim", "huntington beach", "fountain valley", "lake forest", "aliso viejo", "laguna", "mission viejo", "fullerton", "orange county", "san clemente", "foothill ranch", "brea"] },
+  la: { label: "Los Angeles (unspecified)", kw: ["los angeles", "greater los angeles", "la metro"] },
+  remote: { label: "Remote", kw: [] },
+  other: { label: "Outside LA / OC", kw: [] },
+  unknown: { label: "Unknown", kw: [] }
+};
+const HOME_ZONES = ["westside", "central", "valley", "longbeach", "oc"];
+// Commute desirability 0–5 from each home base. Rows follow the freeway reality (405 / 10 / 5 / 110), not straight-line distance.
+const COMMUTE = {
+  westside:  { westside: 5, la: 3.5, central: 3, valley: 3, longbeach: 3.5, oc: 1.5 },
+  central:   { westside: 3, la: 4, central: 5, valley: 4, longbeach: 3, oc: 2 },
+  valley:    { westside: 3, la: 3.5, central: 4, valley: 5, longbeach: 1.5, oc: 1 },
+  longbeach: { westside: 3.5, la: 3.5, central: 3, valley: 1.5, longbeach: 5, oc: 4 },
+  oc:        { westside: 1.5, la: 2, central: 2, valley: 1, longbeach: 4, oc: 5 }
+};
+
+const FACTORS = [
+  ["roleFit", "Role fit"], ["domain", "Domain"], ["ai", "AI relevance"], ["access", "Access"],
+  ["timing", "Timing"], ["geo", "Geography"], ["level", "Level"], ["comp", "Comp"]
+];
+
+const DEFAULT_SETTINGS = {
+  homeZone: "westside",
+  maxOnsiteDays: 3,
+  compFloor: 0,
+  minStage: "seed",
+  weights: { roleFit: 25, domain: 15, ai: 15, access: 20, timing: 10, geo: 10, level: 5, comp: 0 },
+  archPriority: { A: "primary", B: "primary", C: "primary", D: "other", E: "other", F: "secondary" },
+  useAiScores: true,
+  model: "claude-opus-5-5",
+  profileSummary: "Analytics and strategy professional with 10+ years across data engineering, consulting, operations strategy, and people/talent analytics. MBA in strategy and operations. Builds pipelines and dashboards (SQL, Snowflake, Fivetran, R, Tableau) and translates analysis for executives. Applying AI to automate analytics workflows. Targeting LA/OC startups at Lead / Head-of level.",
+  resumeVersions: ["Builder (A/E)", "Talent (B/D)", "Operator (C/F)"]
+};
+
+const DEFAULT_PROFILE = {
+  clusters: {
+    domain_talent: { w: 3, kw: ["people analytics", "talent", "recruiting", "recruiter", "talent acquisition", "ats", "hr tech", "workforce", "hiring", "candidate", "people operations"] },
+    data_build: { w: 2, kw: ["snowflake", "dbt", "fivetran", "pipeline", "sql", "data infrastructure", "first data", "etl", "data warehouse", "automation", "r shiny"] },
+    strategy_ops: { w: 2, kw: ["bizops", "business operations", "strategy", "operations", "chief of staff", "gtm", "planning", "supply chain", "forecasting", "process improvement"] },
+    ai: { w: 2, kw: ["llm", "ai", "machine learning", "agents", "genai", "generative ai", "predictive", "ml", "ai-native", "copilot"] },
+    viz: { w: 1, kw: ["tableau", "looker", "dashboard", "bi", "metrics", "kpi", "reporting"] }
+  },
+  negative: ["phd required", "phd in", "10+ years of ml research", "quota-carrying", "quota carrying", "security clearance required", "active clearance"],
+  levelTarget: ["lead", "head of", "manager", "founding", "principal", "director", "staff", "chief of staff", "senior manager"],
+  levelDown: ["associate", "junior", "analyst i", "entry level", "entry-level", "intern", "coordinator"],
+  domainCompanyKw: ["hr tech", "hrtech", "recruiting", "talent", "workforce", "future of work", "people platform", "payroll", "hiring"]
+};
+
+/* ============================================================
+   Sample data (fictional, clearly marked) so the tool opens in a working state
+   ============================================================ */
+function daysAgo(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
+function daysAhead(n) { return daysAgo(-n); }
+function sampleData() {
+  const c = (id, name, o) => Object.assign({ id, name, stage: "", lastRaiseDate: "", sector: "", website: "", aiNative: false, domainMatch: false, notes: "", sample: true }, o);
+  const companies = [
+    c("c1", "Kelpworks Aero (sample)", { stage: "Series B", lastRaiseDate: daysAgo(70), sector: "Defense hardware / drones", aiNative: false }),
+    c("c2", "Shortlist Labs (sample)", { stage: "Series A", lastRaiseDate: daysAgo(40), sector: "AI recruiting / HR tech", aiNative: true, domainMatch: true }),
+    c("c3", "Bluffside Medical (sample)", { stage: "Series C", lastRaiseDate: daysAgo(300), sector: "Medical devices" }),
+    c("c4", "Arroyo Goods (sample)", { stage: "Seed", lastRaiseDate: daysAgo(150), sector: "DTC consumer brand" }),
+    c("c5", "Parcelwise (sample)", { stage: "Series A", lastRaiseDate: daysAgo(20), sector: "AI logistics software", aiNative: true })
+  ];
+  const l = (id, companyId, o) => Object.assign({ id, companyId, kind: "posting", title: "", url: "", jd: "", location: "", zone: "unknown", workplace: "unknown", onsiteDays: 0, compMin: 0, compMax: 0, postedDate: "", foundDate: daysAgo(3), stage: "discovered", nextFollowUp: "", resumeVersion: "", archOverride: "", overrides: {}, ai: null, notes: "", source: "", sample: true }, o);
+  const leads = [
+    l("l1", "c2", { title: "Head of Analytics", location: "Remote (US)", zone: "remote", workplace: "remote", postedDate: daysAgo(5), compMin: 185000, compMax: 220000, source: "Wellfound",
+      jd: "Shortlist Labs is building AI agents for recruiting teams. We're hiring our first data hire to own analytics end to end: build our data stack (Snowflake, dbt, Fivetran), define recruiting funnel metrics, and partner with product on LLM evaluation. Experience with talent acquisition data, ATS systems, and hiring funnels strongly preferred.",
+      stage: "warming", nextFollowUp: daysAhead(0) }),
+    l("l2", "c1", { title: "Strategy & Operations Lead", location: "El Segundo, CA", zone: "westside", workplace: "onsite", onsiteDays: 5, postedDate: daysAgo(12), compMin: 170000, compMax: 200000, source: "Built In LA",
+      jd: "Kelpworks Aero builds autonomous aerial systems. The Strategy & Operations Lead will own production planning, supply chain analytics, and manufacturing scale-up metrics, reporting to the COO. SQL and dashboarding (Tableau or Looker) required. Experience in hardware, manufacturing, or logistics a plus.",
+      stage: "applied", resumeVersion: "Operator (C/F)", nextFollowUp: daysAgo(2) }),
+    l("l3", "c3", { title: "Senior Manager, Business Operations", location: "Irvine, CA", zone: "oc", workplace: "hybrid", onsiteDays: 3, postedDate: daysAgo(25), compMin: 160000, compMax: 190000, source: "LinkedIn",
+      jd: "Bluffside Medical designs ophthalmic medical devices. Lead business operations analytics across production, returns, and demand planning. Partner with the SVP of Operations on strategic initiatives. Advanced SQL, forecasting, and process improvement experience.",
+      stage: "researching" }),
+    l("l4", "c4", { title: "Operations Analyst", location: "Culver City, CA", zone: "westside", workplace: "hybrid", onsiteDays: 2, postedDate: daysAgo(45), compMin: 85000, compMax: 100000, source: "Wellfound",
+      jd: "Arroyo Goods is a DTC home goods brand. Entry-level operations analyst supporting inventory, fulfillment, and returns reporting in Excel and Shopify.",
+      stage: "discovered" }),
+    l("l5", "c5", { kind: "target", title: "", location: "Santa Monica, CA", zone: "westside", workplace: "hybrid", onsiteDays: 3, source: "VC portfolio page",
+      jd: "Just raised a Series A for AI-native logistics software. No analytics roles posted yet; likely first data hire within 6 months. Supply chain and AI automation focus.",
+      stage: "discovered" })
+  ];
+  const contacts = [
+    { id: "p1", companyId: "c2", name: "Jordan Lee (sample)", role: "VP Product", warmth: 4, how: "Former colleague's manager", link: "", notes: "", sample: true },
+    { id: "p2", companyId: "c1", name: "Sam Ortiz (sample)", role: "Recruiter", warmth: 1, how: "Cold InMail", link: "", notes: "", sample: true }
+  ];
+  const activities = [
+    { id: "a1", leadId: "l1", date: daysAgo(4), type: "message", text: "Asked Jordan for a 20-min intro chat.", sample: true },
+    { id: "a2", leadId: "l2", date: daysAgo(9), type: "applied", text: "Applied with Operator resume.", sample: true }
+  ];
+  const proofPoints = [
+    { id: "pp1", text: "Example: Redesigned a supply chain strategy that cut annual production cost by $XM.", tags: ["C", "F"], keywords: ["supply chain", "operations", "manufacturing", "production"], sample: true },
+    { id: "pp2", text: "Example: Reduced engineering time-to-fill by X days through a funnel deep dive.", tags: ["B", "D"], keywords: ["recruiting", "hiring", "talent acquisition", "funnel"], sample: true },
+    { id: "pp3", text: "Example: Built an end-to-end cloud data pipeline (Fivetran → Snowflake → Tableau).", tags: ["A", "E"], keywords: ["snowflake", "fivetran", "pipeline", "dbt", "data stack"], sample: true },
+    { id: "pp4", text: "Example: Built a predictive model with X% accuracy to identify high-potential employees.", tags: ["B", "D", "A"], keywords: ["predictive", "machine learning", "ai", "people analytics"], sample: true }
+  ];
+  return { companies, leads, contacts, activities, proofPoints };
+}
+
+/* ============================================================
+   State + persistence
+   ============================================================ */
+function freshState(withSample) {
+  const base = { version: 1, settings: structuredClone(DEFAULT_SETTINGS), profile: structuredClone(DEFAULT_PROFILE), companies: [], leads: [], contacts: [], activities: [], proofPoints: [] };
+  if (withSample) Object.assign(base, sampleData());
+  return base;
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      s.settings = Object.assign(structuredClone(DEFAULT_SETTINGS), s.settings || {});
+      s.settings.weights = Object.assign({}, DEFAULT_SETTINGS.weights, s.settings.weights || {});
+      s.settings.archPriority = Object.assign({}, DEFAULT_SETTINGS.archPriority, s.settings.archPriority || {});
+      s.profile = Object.assign(structuredClone(DEFAULT_PROFILE), s.profile || {});
+      for (const k of ["companies", "leads", "contacts", "activities", "proofPoints"]) s[k] = s[k] || [];
+      return s;
+    }
+  } catch (e) { /* storage unavailable or corrupt: fall through to sample */ }
+  return freshState(true);
+}
+let S = load();
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (e) { /* storage blocked: keep working in memory */ } }
+function getKey() { try { return localStorage.getItem(KEY_STORE) || ""; } catch (e) { return ""; } }
+function setKey(v) { try { v ? localStorage.setItem(KEY_STORE, v) : localStorage.removeItem(KEY_STORE); } catch (e) { /* ignore */ } }
+
+const uid = (p) => p + Math.random().toString(36).slice(2, 9);
+const byId = (arr, id) => arr.find((x) => x.id === id);
+const company = (lead) => byId(S.companies, lead.companyId) || { name: "(no company)", stage: "", lastRaiseDate: "", sector: "", aiNative: false, domainMatch: false };
+const today = () => new Date().toISOString().slice(0, 10);
+function daysBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / 86400000); }
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function money(n) { return n ? "$" + Math.round(n / 1000) + "k" : ""; }
+function clamp(v, a = 0, b = 5) { return Math.max(a, Math.min(b, v)); }
+
+/* ============================================================
+   Parsing: pasted job description → structured fields
+   ============================================================ */
+function kwRegex(kw) { return new RegExp("(^|[^a-z0-9])" + kw.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "([^a-z0-9]|$)", "i"); }
+const rxCache = new Map();
+function hasKw(text, kw) { let r = rxCache.get(kw); if (!r) { r = kwRegex(kw); rxCache.set(kw, r); } return r.test(text); }
+function hits(text, kws) { return (kws || []).filter((k) => hasKw(text, k)); }
+
+function detectZone(text) {
+  const t = (text || "").toLowerCase();
+  for (const z of ["westside", "central", "valley", "longbeach", "oc"]) if (ZONES[z].kw.some((k) => hasKw(t, k))) return z;
+  if (ZONES.la.kw.some((k) => hasKw(t, k)) || /\bla\b/.test(t)) return "la";
+  if (/\bremote\b/.test(t)) return "remote";
+  return t.trim() ? "other" : "unknown";
+}
+function parseMoney(num, kSuffix, thousands) {
+  let n = parseFloat(num.replace(/,/g, ""));
+  if (kSuffix) n *= 1000; else if (thousands) n = n; else if (n < 1000) n *= 1000;
+  return Math.round(n);
+}
+function parseJD(raw) {
+  const text = raw || "";
+  const lines = text.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+  const out = {};
+  const url = text.match(/https?:\/\/[^\s)]+/);
+  if (url) out.url = url[0];
+  const titleRx = /(head|lead|manager|director|analyst|engineer|chief|operations|strategy|bizops|principal|founding|scientist)/i;
+  const tl = lines.find((s) => s.length < 90 && titleRx.test(s) && !/^https?:/.test(s));
+  if (tl) out.title = tl.replace(/\s*[-|–·].*(remote|hybrid|on-?site).*$/i, "").trim();
+  const atM = text.match(/\b(?:at|join)\s+([A-Z][A-Za-z0-9&.\- ]{1,40}?)(?=[,.!\n]| is | we | as )/);
+  const aboutM = text.match(/About\s+([A-Z][A-Za-z0-9&.\- ]{1,40})\s*\n/);
+  if (aboutM) out.company = aboutM[1].trim(); else if (atM) out.company = atM[1].trim();
+  // location: first line mentioning a known place or remote/hybrid
+  const allKw = Object.values(ZONES).flatMap((z) => z.kw);
+  const locLine = lines.find((s) => s.length < 120 && (allKw.some((k) => hasKw(s, k)) || /\b(remote|hybrid|on-?site)\b/i.test(s)));
+  if (locLine) out.location = locLine.length > 70 ? locLine.slice(0, 70) : locLine;
+  out.zone = detectZone(out.location || text.slice(0, 600));
+  if (/\bremote\b/i.test(text) && !/\b(hybrid|on-?site|in[- ]office)\b/i.test(text)) out.workplace = "remote";
+  else if (/\bhybrid\b/i.test(text)) out.workplace = "hybrid";
+  else if (/\b(on-?site|in[- ]office|in person)\b/i.test(text)) out.workplace = "onsite";
+  else out.workplace = "unknown";
+  const days = text.match(/(\d)\s*(?:days?|x)\s*(?:a|per|\/)?\s*week/i);
+  if (days) out.onsiteDays = +days[1];
+  else if (out.workplace === "onsite") out.onsiteDays = 5;
+  const comp = text.match(/\$\s?(\d{2,3}(?:,\d{3})?(?:\.\d+)?)\s*(k|K)?\s*(?:-|–|—|to)\s*\$?\s?(\d{2,3}(?:,\d{3})?(?:\.\d+)?)\s*(k|K)?/);
+  if (comp) {
+    out.compMin = parseMoney(comp[1], comp[2] || comp[4], comp[1].includes(","));
+    out.compMax = parseMoney(comp[3], comp[4], comp[3].includes(","));
+  }
+  return out;
+}
+
+/* ============================================================
+   Scoring model
+   score = Σ weight_i × factor_i / 5   (factors 0–5, weights sum ≈ 100)
+   ============================================================ */
+function leadText(lead) { const c = company(lead); return [lead.title, lead.title, c.name, c.sector, lead.jd, lead.notes].join(" \n ").toLowerCase(); }
+
+function archetypeScores(lead) {
+  const t = leadText(lead);
+  return Object.entries(ARCH).map(([k, a]) => [k, hits(t, a.sig).length]).sort((x, y) => y[1] - x[1]);
+}
+function archetype(lead) {
+  if (lead.archOverride) return lead.archOverride;
+  if (lead.ai && lead.ai.archetype && S.settings.useAiScores) return lead.ai.archetype;
+  const s = archetypeScores(lead);
+  return s[0][1] > 0 ? s[0][0] : "";
+}
+function priorityMult(arch) { const p = S.settings.archPriority[arch]; return p === "primary" ? 1 : p === "secondary" ? 0.85 : 0.7; }
+
+function computeFactors(lead) {
+  const P = S.profile, st = S.settings, c = company(lead);
+  const t = leadText(lead);
+  const f = {}, why = {};
+
+  // Role fit: weighted keyword-cluster coverage × role-type priority − red flags.
+  // domain_talent and ai feed their own factors, so they are skipped here to avoid double counting.
+  let num = 0, den = 0; const hitList = [];
+  for (const [name, cl] of Object.entries(P.clusters)) {
+    if (name === "domain_talent" || name === "ai") continue;
+    const h = hits(t, cl.kw); den += cl.w; num += cl.w * Math.min(h.length / 2, 1);
+    if (h.length) hitList.push(name + ": " + h.slice(0, 4).join(", "));
+  }
+  const neg = hits(t, P.negative);
+  const arch = archetype(lead);
+  let rf = den ? (num / den) * 5 : 0;
+  rf = rf * (arch ? priorityMult(arch) : 0.7) - neg.length * 0.75;
+  f.roleFit = clamp(rf); why.roleFit = (hitList.join(" · ") || "no profile keywords found") + (neg.length ? " · red flags: " + neg.join(", ") : "");
+
+  // Domain: talent / HR / future-of-work company
+  const dh = hits(t, P.clusters.domain_talent ? P.clusters.domain_talent.kw : []);
+  const companyDomain = c.domainMatch || hits((c.sector || "").toLowerCase(), P.domainCompanyKw).length > 0;
+  f.domain = companyDomain ? 5 : [0, 2, 3.5, 5][Math.min(dh.length, 3)];
+  why.domain = companyDomain ? "talent / HR-tech company" : dh.length + " talent keywords";
+
+  // AI relevance
+  const ah = hits(t, P.clusters.ai ? P.clusters.ai.kw : []);
+  f.ai = c.aiNative ? 5 : [0, 2, 3, 4, 5][Math.min(ah.length, 4)];
+  why.ai = c.aiNative ? "AI-native company" : (ah.length ? ah.join(", ") : "no AI signals");
+
+  // Access: warmest contact at the company
+  const cs = S.contacts.filter((p) => p.companyId === lead.companyId);
+  const warm = cs.reduce((m, p) => Math.max(m, +p.warmth || 0), 0);
+  f.access = warm; why.access = cs.length ? cs.length + " contact(s), warmest " + warm + "/5" : "no contacts yet (cold)";
+
+  // Timing: posting freshness or recent raise
+  let post = null, raise = null;
+  const pd = lead.postedDate || (lead.kind === "posting" ? lead.foundDate : "");
+  if (pd) { const d = daysBetween(pd, today()); post = d <= 7 ? 5 : d <= 14 ? 4 : d <= 30 ? 3 : d <= 60 ? 1.5 : 0.5; }
+  if (c.lastRaiseDate) { const m = daysBetween(c.lastRaiseDate, today()) / 30.4; raise = m <= 3 ? 5 : m <= 6 ? 4 : m <= 12 ? 2.5 : 1; }
+  f.timing = Math.max(post ?? 0, raise ?? 0, (post == null && raise == null) ? 2 : 0);
+  why.timing = [pd ? "posted " + daysBetween(pd, today()) + "d ago" : "", c.lastRaiseDate ? "raised " + Math.round(daysBetween(c.lastRaiseDate, today()) / 30.4) + " mo ago" : ""].filter(Boolean).join(" · ") || "no dates";
+
+  // Geography: commute from home base, softened by fewer on-site days
+  let g;
+  if (lead.workplace === "remote" || lead.zone === "remote") { g = 5; why.geo = "remote"; }
+  else if (lead.zone === "other") { g = 0; why.geo = "outside LA / OC and not remote"; }
+  else if (lead.zone === "unknown") { g = 2.5; why.geo = "location unknown"; }
+  else {
+    const base = (COMMUTE[st.homeZone] || COMMUTE.westside)[lead.zone] ?? 2.5;
+    const days = lead.workplace === "onsite" ? 5 : lead.workplace === "hybrid" ? (lead.onsiteDays || 3) : (lead.onsiteDays || 5);
+    g = base + (5 - base) * (1 - days / 5);
+    if (days > st.maxOnsiteDays) g -= 1;
+    why.geo = ZONES[lead.zone].label + " · " + days + " day(s) on-site";
+  }
+  f.geo = clamp(g);
+
+  // Level
+  const titleL = (lead.title || "").toLowerCase();
+  const up = hits(titleL, P.levelTarget), down = hits(titleL, P.levelDown).concat(/entry[- ]level/i.test(lead.jd || "") && !/entry[- ]level/.test(titleL) ? ["entry level"] : []);
+  f.level = lead.kind === "target" ? 3 : down.length ? 1 : up.length ? 5 : 3;
+  why.level = down.length ? "below target: " + down.join(", ") : up.length ? "target level: " + up.join(", ") : "level unclear";
+
+  // Comp vs floor
+  const floor = +st.compFloor || 0, hi = lead.compMax || lead.compMin, lo = lead.compMin || lead.compMax;
+  if (!hi || !floor) { f.comp = 3; why.comp = hi ? money(lo) + "–" + money(hi) + " (no floor set)" : "comp unknown"; }
+  else if (hi < floor) { f.comp = 0; why.comp = "below floor " + money(floor); }
+  else if (lo >= floor) { f.comp = 5; why.comp = "meets floor"; }
+  else { f.comp = 4; why.comp = "range straddles floor"; }
+
+  // AI-assisted values replace the keyword guesses when available
+  const src = {};
+  if (lead.ai && st.useAiScores) {
+    for (const [k, a] of [["roleFit", "role_fit"], ["ai", "ai_relevance"], ["domain", "domain_match"]]) {
+      if (typeof lead.ai[a] === "number") { f[k] = clamp(lead.ai[a]); src[k] = "ai"; }
+    }
+  }
+  // Manual overrides win over everything
+  for (const [k] of FACTORS) if (lead.overrides && lead.overrides[k] != null && lead.overrides[k] !== "") { f[k] = clamp(+lead.overrides[k]); src[k] = "manual"; }
+  return { f, why, src, arch, flags: { belowFloor: f.comp === 0 && !!floor, levelDown: down.length > 0, redFlags: neg } };
+}
+function score(lead) {
+  const { f } = computeFactors(lead); const w = S.settings.weights;
+  let tot = 0, wsum = 0;
+  for (const [k] of FACTORS) { tot += (w[k] || 0) * f[k] / 5; wsum += (w[k] || 0); }
+  return wsum ? Math.round(tot / wsum * 100) : 0;
+}
+function pillClass(s) { return s >= 70 ? "pill hi" : s >= 50 ? "pill mid" : "pill"; }
+
+function bestBullets(lead, n = 3) {
+  const arch = archetype(lead), t = leadText(lead);
+  return S.proofPoints.map((p) => ({ p, s: (p.tags || []).includes(arch) * 2 + hits(t, p.keywords || []).length }))
+    .filter((x) => x.s > 0).sort((a, b) => b.s - a.s).slice(0, n).map((x) => x.p);
+}
+
+/* ============================================================
+   Claude analysis (optional; key stays in this browser)
+   ============================================================ */
+const AI_SCHEMA = {
+  type: "object", additionalProperties: false,
+  required: ["title", "company", "location", "workplace", "onsite_days", "comp_min", "comp_max", "archetype", "role_fit", "ai_relevance", "domain_match", "why_fit", "gaps", "lead_with"],
+  properties: {
+    title: { type: "string" }, company: { type: "string" }, location: { type: "string" },
+    workplace: { type: "string", enum: ["onsite", "hybrid", "remote", "unknown"] },
+    onsite_days: { type: "integer", description: "On-site days per week, 0 if unknown" },
+    comp_min: { type: "integer", description: "Annual base USD, 0 if not stated" },
+    comp_max: { type: "integer", description: "Annual base USD, 0 if not stated" },
+    archetype: { type: "string", enum: ["A", "B", "C", "D", "E", "F"] },
+    role_fit: { type: "integer", description: "0-5 fit between the candidate profile and this role" },
+    ai_relevance: { type: "integer", description: "0-5 how central AI is to the company or role" },
+    domain_match: { type: "integer", description: "0-5 how much the company works in talent, HR tech, recruiting, or future of work" },
+    why_fit: { type: "string", description: "2-3 sentences" },
+    gaps: { type: "string", description: "1-2 sentences on what is missing or risky" },
+    lead_with: { type: "array", items: { type: "string" }, description: "2-3 short angles to lead with in outreach" }
+  }
+};
+async function analyzeWithClaude(lead) {
+  const key = getKey();
+  if (!key) throw new Error("Add your Anthropic API key in Settings first.");
+  const c = company(lead);
+  const archList = Object.entries(ARCH).map(([k, a]) => `${k} = ${a.name} (${S.settings.archPriority[k]})`).join("\n");
+  const proof = S.proofPoints.map((p) => "- " + p.text).join("\n");
+  const prompt = `Candidate profile:\n${S.settings.profileSummary}\n\nCandidate proof points:\n${proof || "(none)"}\n\nRole types the candidate targets (with priority):\n${archList}\n\nLead to analyze:\nCompany: ${c.name}\nCompany sector: ${c.sector || "unknown"}\nTitle: ${lead.title || "(no posted role; company is a target)"}\nLocation: ${lead.location || "unknown"}\nText:\n${lead.jd || "(none)"}\n\nExtract the posting fields and score the fit honestly. Pick the single best-matching role type. Use 0 for unknown numbers.`;
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": key,
+      "anthropic-version": "2026-10-21",
+      "anthropic-beta": "server-side-fallback-2026-07-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: S.settings.model || "claude-opus-5-5",
+      max_tokens: 4000,
+      fallbacks: "default",
+      output_config: { effort: "low", format: { type: "json_schema", schema: AI_SCHEMA } },
+      system: "You are a sharp startup recruiter and career strategist helping one candidate triage job leads in the Los Angeles / Orange County startup market. Be candid and specific.",
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data.error && data.error.message) || "Request failed with status " + res.status);
+  if (data.stop_reason === "refusal") throw new Error("Claude declined to analyze this text.");
+  if (data.stop_reason === "max_tokens") throw new Error("The response was cut off. Try a shorter posting.");
+  const block = (data.content || []).find((b) => b.type === "text");
+  if (!block) throw new Error("No analysis came back.");
+  return JSON.parse(block.text);
+}
+
+/* ============================================================
+   Rendering
+   ============================================================ */
+const VIEWS = [["today", "Today"], ["pipeline", "Pipeline"], ["leads", "Leads"], ["add", "Add lead"], ["network", "Companies & contacts"], ["proof", "Proof points"], ["settings", "Settings"]];
+let current = (location.hash || "").slice(1);
+if (!VIEWS.some((v) => v[0] === current)) current = "today";
+let openLeadId = null;
+let tableSort = { key: "score", dir: -1 };
+let filters = { q: "", stage: "active", arch: "", min: 0 };
+let addMode = "posting";
+let draft = null;
+
+function setView(v) { current = v; try { history.replaceState(null, "", "#" + v); } catch (e) { /* ignore */ } render(); window.scrollTo(0, 0); }
+window.addEventListener("hashchange", () => { const v = location.hash.slice(1); if (VIEWS.some((x) => x[0] === v)) { current = v; render(); } });
+
+function toast(msg) {
+  document.querySelectorAll(".toast").forEach((x) => x.remove());
+  const t = document.createElement("div"); t.className = "toast"; t.textContent = msg; document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2200);
+}
+// Active leads past the research stages must always have a next step.
+function isStalled(l) { return ACTIVE.includes(l.stage) && !["discovered", "researching"].includes(l.stage) && !l.nextFollowUp; }
+function needsAction(l) { return ACTIVE.includes(l.stage) && ((l.nextFollowUp && l.nextFollowUp <= today()) || isStalled(l)); }
+function fuChip(lead) {
+  if (!lead.nextFollowUp) return isStalled(lead) ? '<span class="chip warn">no next step</span>' : "";
+  const d = daysBetween(today(), lead.nextFollowUp);
+  if (d < 0) return `<span class="chip over">${-d}d overdue</span>`;
+  if (d === 0) return '<span class="chip due">due today</span>';
+  return `<span class="chip">in ${d}d</span>`;
+}
+function leadName(lead) { return lead.title || (lead.kind === "target" ? "Target company (no posting)" : "Untitled role"); }
+function archChip(a) { return a ? `<span class="chip arch" title="${esc(ARCH[a].name)}">${a}</span>` : ""; }
+
+function renderTabs() {
+  const due = S.leads.filter((l) => needsAction(l)).length;
+  document.getElementById("tabs").innerHTML = VIEWS.map(([k, label]) =>
+    `<button role="tab" aria-selected="${k === current}" data-view="${k}">${label}${k === "today" && due ? `<span class="count">${due}</span>` : k === "leads" ? `<span class="count">${S.leads.length}</span>` : ""}</button>`).join("");
+}
+document.getElementById("tabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-view]"); if (b) setView(b.dataset.view); });
+
+function sampleBanner() {
+  const n = [...S.leads, ...S.companies, ...S.proofPoints].filter((x) => x.sample).length;
+  if (!n) return "";
+  return `<div class="banner"><span><strong>Sample data loaded.</strong> The companies, people, and proof points marked "(sample)" or "Example" are made up so you can see how scoring works.</span><button class="btn" data-act="clear-sample">Remove sample data</button></div>`;
+}
+
+function render() {
+  renderTabs();
+  const v = document.getElementById("view");
+  const fn = { today: viewToday, pipeline: viewPipeline, leads: viewLeads, add: viewAdd, network: viewNetwork, proof: viewProof, settings: viewSettings }[current];
+  v.innerHTML = sampleBanner() + fn();
+  if (current === "add") bindAdd();
+  if (current === "pipeline") bindBoard();
+  renderDrawer();
+}
+
+/* ---------- Today ---------- */
+function viewToday() {
+  const act = S.leads.filter((l) => ACTIVE.includes(l.stage));
+  const due = act.filter((l) => l.nextFollowUp && l.nextFollowUp <= today()).sort((a, b) => a.nextFollowUp.localeCompare(b.nextFollowUp));
+  const stalled = act.filter(isStalled);
+  const top = S.leads.filter((l) => ["discovered", "researching"].includes(l.stage)).map((l) => [l, score(l)]).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const item = (l, s) => `<div class="list-item" data-open="${l.id}"><div class="main"><div><strong>${esc(company(l).name)}</strong> · ${esc(leadName(l))}</div><div class="row small muted">${archChip(archetype(l))}<span>${STAGE_LABEL[l.stage]}</span>${fuChip(l)}</div></div><span class="${pillClass(s ?? score(l))}">${s ?? score(l)}</span></div>`;
+  const counts = STAGES.map(([k, label]) => [label, S.leads.filter((l) => l.stage === k).length]);
+  const max = Math.max(1, ...counts.map((c) => c[1]));
+  const bySource = {};
+  for (const l of S.leads) { const s = l.source || "Unknown"; bySource[s] = bySource[s] || { n: 0, adv: 0 }; bySource[s].n++; if (["screening", "interviewing", "offer", "accepted"].includes(l.stage)) bySource[s].adv++; }
+  return `
+  <div class="grid-2">
+    <section class="panel"><div class="panel-head"><h2>Follow-ups due</h2><span class="muted small">${due.length} due or overdue</span></div>
+      ${due.length ? due.map((l) => item(l)).join("") : '<div class="empty">Nothing due. Set a follow-up date on any active lead to schedule it here.</div>'}
+      ${stalled.length ? `<h3 style="margin-top:14px">Stalled <span class="muted small">(active, no next step)</span></h3>${stalled.map((l) => item(l)).join("")}` : ""}
+    </section>
+    <section class="panel"><div class="panel-head"><h2>Best leads to act on</h2><span class="muted small">Discovered or researching, by score</span></div>
+      ${top.length ? top.map(([l, s]) => item(l, s)).join("") : '<div class="empty">No new leads. Add one from a posting or a target company.</div>'}
+      <div class="row" style="margin-top:12px"><button class="btn primary" data-view-go="add">Add lead</button></div>
+    </section>
+  </div>
+  <div class="grid-2">
+    <section class="panel"><div class="panel-head"><h2>Pipeline</h2><span class="muted small">${S.leads.length} leads · ${S.companies.length} companies · ${S.contacts.length} contacts</span></div>
+      <div class="funnel">${counts.filter((c, i) => i < 7 || c[1]).map(([label, n]) => `<div class="funnel-row"><span>${label}</span><div class="bar-track"><div class="bar" style="width:${n / max * 100}%"></div></div><span class="num">${n}</span></div>`).join("")}</div>
+    </section>
+    <section class="panel"><div class="panel-head"><h2>Where leads come from</h2><span class="muted small">Advanced = screening or later</span></div>
+      <div class="table-wrap"><table><thead><tr><th>Source</th><th>Leads</th><th>Advanced</th><th>Rate</th></tr></thead><tbody>
+      ${Object.entries(bySource).sort((a, b) => b[1].n - a[1].n).map(([s, o]) => `<tr><td>${esc(s)}</td><td class="num">${o.n}</td><td class="num">${o.adv}</td><td class="num">${Math.round(o.adv / o.n * 100)}%</td></tr>`).join("") || '<tr><td colspan="4" class="muted">No leads yet</td></tr>'}
+      </tbody></table></div>
+    </section>
+  </div>`;
+}
+
+/* ---------- Pipeline board ---------- */
+function viewPipeline() {
+  const cols = STAGES.filter(([k]) => k !== "accepted" && k !== "declined");
+  return `<section class="panel"><div class="panel-head"><h2>Pipeline</h2><span class="muted small">Drag cards between stages, or open a card to change its stage.</span></div>
+  <div class="board">${cols.map(([k, label]) => {
+    const ls = S.leads.filter((l) => l.stage === k).map((l) => [l, score(l)]).sort((a, b) => b[1] - a[1]);
+    return `<div class="col" data-stage="${k}"><div class="col-head"><span>${label}</span><span class="num muted">${ls.length}</span></div>
+      ${ls.map(([l, s]) => `<div class="card" draggable="true" data-open="${l.id}" data-drag="${l.id}"><div class="top"><span class="t">${esc(company(l).name)}</span><span class="${pillClass(s)}">${s}</span></div><div class="small">${esc(leadName(l))}</div><div class="row small">${archChip(archetype(l))}${fuChip(l)}</div></div>`).join("")}
+    </div>`;
+  }).join("")}</div></section>`;
+}
+function bindBoard() {
+  document.querySelectorAll("[data-drag]").forEach((c) => c.addEventListener("dragstart", (e) => e.dataTransfer.setData("text/plain", c.dataset.drag)));
+  document.querySelectorAll(".col").forEach((col) => {
+    col.addEventListener("dragover", (e) => { e.preventDefault(); col.classList.add("drop"); });
+    col.addEventListener("dragleave", () => col.classList.remove("drop"));
+    col.addEventListener("drop", (e) => {
+      e.preventDefault(); col.classList.remove("drop");
+      const l = byId(S.leads, e.dataTransfer.getData("text/plain"));
+      if (l && l.stage !== col.dataset.stage) { l.stage = col.dataset.stage; logActivity(l.id, "stage", "Moved to " + STAGE_LABEL[l.stage]); save(); render(); }
+    });
+  });
+}
+
+/* ---------- Leads table ---------- */
+function viewLeads() {
+  let rows = S.leads.map((l) => ({ l, c: company(l), s: score(l), a: archetype(l) }));
+  const q = filters.q.toLowerCase();
+  if (q) rows = rows.filter((r) => [r.c.name, r.l.title, r.l.location, r.c.sector, r.l.source].join(" ").toLowerCase().includes(q));
+  if (filters.stage === "active") rows = rows.filter((r) => ACTIVE.includes(r.l.stage));
+  else if (filters.stage) rows = rows.filter((r) => r.l.stage === filters.stage);
+  if (filters.arch) rows = rows.filter((r) => r.a === filters.arch);
+  if (filters.min) rows = rows.filter((r) => r.s >= filters.min);
+  const keyFn = { score: (r) => r.s, company: (r) => r.c.name.toLowerCase(), title: (r) => (r.l.title || "").toLowerCase(), type: (r) => r.a, where: (r) => r.l.zone, stage: (r) => STAGES.findIndex((x) => x[0] === r.l.stage), follow: (r) => r.l.nextFollowUp || "9999", posted: (r) => r.l.postedDate || "" }[tableSort.key];
+  rows.sort((a, b) => { const x = keyFn(a), y = keyFn(b); return (x > y ? 1 : x < y ? -1 : 0) * tableSort.dir; });
+  const th = (k, label, cls = "") => `<th data-sort="${k}" class="${cls}" ${tableSort.key === k ? `data-sorted="${tableSort.dir > 0 ? "▲" : "▼"}"` : ""}>${label}</th>`;
+  return `<section class="panel">
+    <div class="panel-head"><h2>Leads</h2><span class="muted small">${rows.length} shown</span></div>
+    <div class="form-grid" style="margin-bottom:12px">
+      <label class="field"><span>Search</span><input type="search" id="f-q" value="${esc(filters.q)}" placeholder="Company, title, sector…"></label>
+      <label class="field"><span>Stage</span><select id="f-stage"><option value="active">All active</option><option value="">Everything</option>${STAGES.map(([k, l]) => `<option value="${k}" ${filters.stage === k ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+      <label class="field"><span>Role type</span><select id="f-arch"><option value="">Any</option>${Object.entries(ARCH).map(([k, a]) => `<option value="${k}" ${filters.arch === k ? "selected" : ""}>${k} · ${esc(a.name)}</option>`).join("")}</select></label>
+      <label class="field"><span>Minimum score</span><input type="number" id="f-min" min="0" max="100" step="5" value="${filters.min}"></label>
+    </div>
+    <div class="table-wrap"><table><thead><tr>${th("score", "Score")}${th("company", "Company")}${th("title", "Role")}${th("type", "Type")}${th("where", "Where", "hide-sm")}${th("stage", "Stage")}${th("follow", "Follow-up")}${th("posted", "Posted", "hide-sm")}</tr></thead>
+    <tbody>${rows.map((r) => `<tr data-open="${r.l.id}"><td><span class="${pillClass(r.s)}">${r.s}</span></td><td class="title-cell"><strong>${esc(r.c.name)}</strong><span class="small muted">${esc(r.c.stage)}</span></td><td>${esc(leadName(r.l))}${r.l.compMax ? `<div class="small muted num">${money(r.l.compMin)}–${money(r.l.compMax)}</div>` : ""}</td><td>${archChip(r.a)}</td><td class="hide-sm small">${esc(ZONES[r.l.zone]?.label || "")}<div class="muted">${esc(r.l.workplace !== "unknown" ? r.l.workplace : "")}</div></td><td>${STAGE_LABEL[r.l.stage]}</td><td>${fuChip(r.l)}</td><td class="hide-sm num small">${esc(r.l.postedDate)}</td></tr>`).join("") || '<tr><td colspan="8" class="muted">No leads match these filters.</td></tr>'}</tbody></table></div>
+  </section>`;
+}
+
+/* ---------- Add lead ---------- */
+function blankDraft(kind) {
+  return { kind, companyName: "", title: "", url: "", jd: "", location: "", zone: "unknown", workplace: "unknown", onsiteDays: 0, compMin: 0, compMax: 0, postedDate: "", source: "", sector: "", companyStage: "", lastRaiseDate: "", aiNative: false, domainMatch: false, ai: null };
+}
+function draftLead() {
+  const ex = S.companies.find((c) => c.name.toLowerCase() === draft.companyName.trim().toLowerCase());
+  const tmpC = ex ? Object.assign({}, ex, { sector: draft.sector || ex.sector, lastRaiseDate: draft.lastRaiseDate || ex.lastRaiseDate, aiNative: draft.aiNative || ex.aiNative, domainMatch: draft.domainMatch || ex.domainMatch })
+    : { id: "__draft", name: draft.companyName || "New company", sector: draft.sector, lastRaiseDate: draft.lastRaiseDate, aiNative: draft.aiNative, domainMatch: draft.domainMatch, stage: draft.companyStage };
+  return { lead: { id: "__draft", companyId: tmpC.id, kind: draft.kind, title: draft.title, url: draft.url, jd: draft.jd, location: draft.location, zone: draft.zone, workplace: draft.workplace, onsiteDays: +draft.onsiteDays || 0, compMin: +draft.compMin || 0, compMax: +draft.compMax || 0, postedDate: draft.postedDate, foundDate: today(), stage: "discovered", overrides: {}, ai: draft.ai, notes: "" }, tmpC };
+}
+function previewScore() {
+  const { lead, tmpC } = draftLead();
+  const had = byId(S.companies, tmpC.id); if (!had) S.companies.push(tmpC);
+  else { var saved = Object.assign({}, had); Object.assign(had, tmpC); }
+  const r = computeFactors(lead), s = score(lead), bb = bestBullets(lead);
+  if (!had) S.companies.pop(); else Object.assign(had, saved);
+  return { r, s, bb };
+}
+function viewAdd() {
+  if (!draft || draft.kind !== addMode) draft = blankDraft(addMode);
+  const d = draft;
+  const zoneOpts = Object.entries(ZONES).map(([k, z]) => `<option value="${k}" ${d.zone === k ? "selected" : ""}>${z.label}</option>`).join("");
+  return `<div class="grid-2">
+  <section class="panel stack">
+    <div class="panel-head"><h2>Add a lead</h2>
+      <div class="seg" role="group"><button data-mode="posting" aria-pressed="${addMode === "posting"}">Job posting</button><button data-mode="target" aria-pressed="${addMode === "target"}">Target company</button></div></div>
+    ${addMode === "posting"
+      ? `<label class="field"><span>Paste the full posting (title, location, description, salary)</span><textarea id="d-jd" rows="10" placeholder="Copy everything from the LinkedIn, Wellfound, or careers page and paste it here. Fields below fill in automatically.">${esc(d.jd)}</textarea></label>`
+      : `<label class="field"><span>Why this company (notes, what they do, signals they'll hire)</span><textarea id="d-jd" rows="6" placeholder="e.g. Just raised a Series A, AI-native, no data team yet.">${esc(d.jd)}</textarea></label>`}
+    <div class="form-grid">
+      <label class="field"><span>Company</span><input type="text" id="d-companyName" list="company-list" value="${esc(d.companyName)}"></label>
+      ${addMode === "posting" ? `<label class="field"><span>Role title</span><input type="text" id="d-title" value="${esc(d.title)}"></label>` : ""}
+      <label class="field"><span>Location</span><input type="text" id="d-location" value="${esc(d.location)}"></label>
+      <label class="field"><span>Area</span><select id="d-zone">${zoneOpts}</select></label>
+      <label class="field"><span>Workplace</span><select id="d-workplace">${["unknown", "onsite", "hybrid", "remote"].map((w) => `<option ${d.workplace === w ? "selected" : ""}>${w}</option>`).join("")}</select></label>
+      <label class="field"><span>On-site days / week</span><input type="number" id="d-onsiteDays" min="0" max="5" value="${d.onsiteDays || ""}"></label>
+      ${addMode === "posting" ? `<label class="field"><span>Comp min ($)</span><input type="number" id="d-compMin" step="5000" value="${d.compMin || ""}"></label>
+      <label class="field"><span>Comp max ($)</span><input type="number" id="d-compMax" step="5000" value="${d.compMax || ""}"></label>
+      <label class="field"><span>Date posted</span><input type="date" id="d-postedDate" value="${esc(d.postedDate)}"></label>
+      <label class="field"><span>Posting URL</span><input type="url" id="d-url" value="${esc(d.url)}"></label>` : ""}
+      <label class="field"><span>Source</span><input type="text" id="d-source" list="source-list" value="${esc(d.source)}" placeholder="Wellfound, referral…"></label>
+      <label class="field"><span>Sector</span><input type="text" id="d-sector" value="${esc(d.sector)}" placeholder="AI recruiting, medtech…"></label>
+      <label class="field"><span>Funding stage</span><input type="text" id="d-companyStage" value="${esc(d.companyStage)}" placeholder="Seed, Series A…"></label>
+      <label class="field"><span>Last raise date</span><input type="date" id="d-lastRaiseDate" value="${esc(d.lastRaiseDate)}"></label>
+      <label class="row small wide"><input type="checkbox" id="d-aiNative" ${d.aiNative ? "checked" : ""}> AI-native company <input type="checkbox" id="d-domainMatch" ${d.domainMatch ? "checked" : ""} style="margin-left:14px"> Talent / HR-tech company</label>
+    </div>
+    <datalist id="company-list">${S.companies.map((c) => `<option value="${esc(c.name)}">`).join("")}</datalist>
+    <datalist id="source-list">${["Wellfound", "YC Work at a Startup", "Built In LA", "LinkedIn", "VC portfolio page", "Referral", "Event", "Company careers page"].map((s) => `<option value="${s}">`).join("")}</datalist>
+    <div class="row">
+      <button class="btn primary" id="d-save">Save lead</button>
+      <button class="btn" id="d-ai" ${getKey() ? "" : "disabled title='Add an API key in Settings to enable'"}>Analyze with Claude</button>
+      <button class="btn ghost" id="d-reset">Clear</button>
+      <span class="small muted" id="d-ai-status">${getKey() ? "" : "Claude analysis is off until you add an API key in Settings."}</span>
+    </div>
+  </section>
+  <section class="panel stack" id="d-preview">${previewHTML()}</section>
+  </div>`;
+}
+function previewHTML() {
+  const { r, s, bb } = previewScore();
+  return `<div class="panel-head"><h2>Live score</h2><span class="${pillClass(s)}" style="font-size:16px">${s}</span></div>
+    <div class="row small">${r.arch ? archChip(r.arch) + " " + esc(ARCH[r.arch].name) : '<span class="muted">Role type unclear</span>'}${r.flags.levelDown ? '<span class="chip warn">below target level</span>' : ""}${r.flags.belowFloor ? '<span class="chip warn">below comp floor</span>' : ""}</div>
+    ${factorBars(r)}
+    ${draft.ai ? aiBlock(draft.ai) : ""}
+    <div><div class="label" style="margin-bottom:6px">Lead with these proof points</div>${bb.length ? `<ul class="bullets">${bb.map((p) => `<li>${esc(p.text)}</li>`).join("")}</ul>` : '<div class="muted small">No matching proof points yet.</div>'}</div>`;
+}
+function factorBars(r) {
+  const w = S.settings.weights;
+  return `<div class="factors">${FACTORS.map(([k, label]) => `<div class="factor" title="${esc(r.why[k] || "")}"><span>${label} <span class="muted small num">${w[k] || 0}</span></span><div class="track"><div class="fill ${r.src[k] === "ai" ? "ai" : ""}" style="width:${r.f[k] / 5 * 100}%"></div></div><span class="num small">${r.f[k].toFixed(1)}${r.src[k] ? `<span class="muted"> ${r.src[k] === "ai" ? "AI" : "set"}</span>` : ""}</span></div><div class="small muted" style="margin:-4px 0 2px 0">${esc(r.why[k] || "")}</div>`).join("")}</div>`;
+}
+function aiBlock(ai) {
+  return `<div class="stack" style="border-top:1px solid var(--line);padding-top:10px"><div class="label">Claude's read</div>
+    <div><strong>Why it fits.</strong> ${esc(ai.why_fit)}</div><div><strong>Gaps.</strong> ${esc(ai.gaps)}</div>
+    ${ai.lead_with && ai.lead_with.length ? `<div><strong>Lead with:</strong><ul class="bullets">${ai.lead_with.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}</div>`;
+}
+function bindAdd() {
+  document.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => { addMode = b.dataset.mode; draft = null; render(); }));
+  const fields = ["jd", "companyName", "title", "location", "zone", "workplace", "onsiteDays", "compMin", "compMax", "postedDate", "url", "source", "sector", "companyStage", "lastRaiseDate"];
+  const refresh = () => { document.getElementById("d-preview").innerHTML = previewHTML(); };
+  for (const f of fields) {
+    const el = document.getElementById("d-" + f); if (!el) continue;
+    el.addEventListener("input", () => {
+      draft[f] = el.value;
+      if (f === "location") { draft.zone = detectZone(el.value); const z = document.getElementById("d-zone"); if (z) z.value = draft.zone; }
+      if (f === "jd" && addMode === "posting") {
+        const p = parseJD(el.value);
+        for (const [k, v] of Object.entries(p)) {
+          if (v == null || v === "") continue;
+          const key = k === "company" ? "companyName" : k;
+          const input = document.getElementById("d-" + key);
+          if (input && !input.dataset.touched) { draft[key] = v; input.value = v; }
+        }
+      }
+      refresh();
+    });
+    el.addEventListener("change", () => { if (f !== "jd") el.dataset.touched = "1"; });
+  }
+  for (const f of ["aiNative", "domainMatch"]) document.getElementById("d-" + f).addEventListener("change", (e) => { draft[f] = e.target.checked; refresh(); });
+  document.getElementById("d-reset").addEventListener("click", () => { draft = null; render(); });
+  document.getElementById("d-save").addEventListener("click", saveDraft);
+  document.getElementById("d-ai").addEventListener("click", async (e) => {
+    const st = document.getElementById("d-ai-status"); e.target.disabled = true; st.textContent = "Analyzing…";
+    try {
+      const { lead } = draftLead(); const ai = await analyzeWithClaude(lead);
+      draft.ai = ai;
+      const map = { title: "title", company: "companyName", location: "location", workplace: "workplace", onsite_days: "onsiteDays", comp_min: "compMin", comp_max: "compMax" };
+      for (const [a, k] of Object.entries(map)) if (ai[a] && (!draft[k] || draft[k] === "unknown")) draft[k] = ai[a];
+      if (draft.zone === "unknown" || draft.zone === "other") draft.zone = detectZone(draft.location);
+      render(); toast("Analysis added");
+    } catch (err) { st.textContent = err.message; e.target.disabled = false; }
+  });
+}
+function saveDraft() {
+  if (!draft.companyName.trim()) { toast("Add a company name first"); document.getElementById("d-companyName").focus(); return; }
+  let c = S.companies.find((x) => x.name.toLowerCase() === draft.companyName.trim().toLowerCase());
+  if (!c) { c = { id: uid("c"), name: draft.companyName.trim(), stage: "", lastRaiseDate: "", sector: "", website: "", aiNative: false, domainMatch: false, notes: "" }; S.companies.push(c); }
+  if (draft.sector) c.sector = draft.sector; if (draft.companyStage) c.stage = draft.companyStage; if (draft.lastRaiseDate) c.lastRaiseDate = draft.lastRaiseDate;
+  if (draft.aiNative) c.aiNative = true; if (draft.domainMatch) c.domainMatch = true;
+  const dup = draft.url && S.leads.find((l) => l.url && l.url === draft.url);
+  if (dup) { toast("This posting is already saved"); openLeadId = dup.id; render(); return; }
+  const { lead } = draftLead();
+  lead.id = uid("l"); lead.companyId = c.id; lead.source = draft.source;
+  S.leads.push(lead); logActivity(lead.id, "note", "Lead added" + (draft.source ? " from " + draft.source : ""));
+  save(); draft = null; openLeadId = lead.id; toast("Lead saved"); render();
+}
+
+/* ---------- Companies & contacts ---------- */
+function viewNetwork() {
+  const cs = [...S.companies].sort((a, b) => a.name.localeCompare(b.name));
+  return `<section class="panel"><div class="panel-head"><h2>Companies & contacts</h2><span class="muted small">Warmth: 0 cold · 1 cold message · 2 second-degree · 3 met once · 4 knows you well · 5 will refer you</span></div>
+  ${cs.length ? cs.map((c) => {
+    const people = S.contacts.filter((p) => p.companyId === c.id);
+    const leads = S.leads.filter((l) => l.companyId === c.id);
+    return `<details style="border-bottom:1px solid var(--line);padding:10px 0" ${people.length ? "" : ""}>
+      <summary><strong>${esc(c.name)}</strong> <span class="muted small">${esc([c.stage, c.sector].filter(Boolean).join(" · "))}</span> <span class="chip">${leads.length} lead(s)</span> <span class="chip">${people.length} contact(s)</span></summary>
+      <div class="stack" style="padding:10px 0 4px">
+        <div class="form-grid">
+          <label class="field"><span>Name</span><input type="text" data-cfield="name" data-cid="${c.id}" value="${esc(c.name)}"></label>
+          <label class="field"><span>Funding stage</span><input type="text" data-cfield="stage" data-cid="${c.id}" value="${esc(c.stage)}"></label>
+          <label class="field"><span>Last raise</span><input type="date" data-cfield="lastRaiseDate" data-cid="${c.id}" value="${esc(c.lastRaiseDate)}"></label>
+          <label class="field"><span>Sector</span><input type="text" data-cfield="sector" data-cid="${c.id}" value="${esc(c.sector)}"></label>
+          <label class="field"><span>Website</span><input type="url" data-cfield="website" data-cid="${c.id}" value="${esc(c.website)}"></label>
+          <label class="row small"><input type="checkbox" data-cflag="aiNative" data-cid="${c.id}" ${c.aiNative ? "checked" : ""}> AI-native</label>
+          <label class="row small"><input type="checkbox" data-cflag="domainMatch" data-cid="${c.id}" ${c.domainMatch ? "checked" : ""}> Talent / HR-tech</label>
+        </div>
+        ${leads.map((l) => `<div class="list-item" data-open="${l.id}"><span>${esc(leadName(l))} · ${STAGE_LABEL[l.stage]}</span><span class="${pillClass(score(l))}">${score(l)}</span></div>`).join("")}
+        <div class="label">Contacts</div>
+        ${people.map((p) => `<div class="form-grid" style="align-items:end">
+          <label class="field"><span>Name</span><input type="text" data-pfield="name" data-pid="${p.id}" value="${esc(p.name)}"></label>
+          <label class="field"><span>Role</span><input type="text" data-pfield="role" data-pid="${p.id}" value="${esc(p.role)}"></label>
+          <label class="field"><span>Warmth (0–5)</span><input type="number" min="0" max="5" data-pfield="warmth" data-pid="${p.id}" value="${p.warmth}"></label>
+          <label class="field"><span>How you know them</span><input type="text" data-pfield="how" data-pid="${p.id}" value="${esc(p.how)}"></label>
+          <label class="field"><span>Profile link</span><input type="url" data-pfield="link" data-pid="${p.id}" value="${esc(p.link)}"></label>
+          <button class="btn danger" data-act="del-contact" data-pid="${p.id}">Remove</button></div>`).join("") || '<div class="muted small">No contacts yet. A warm contact is worth up to 20 points.</div>'}
+        <div class="row"><button class="btn" data-act="add-contact" data-cid="${c.id}">Add contact</button><button class="btn danger" data-act="del-company" data-cid="${c.id}">Delete company</button></div>
+      </div></details>`;
+  }).join("") : '<div class="empty">No companies yet. Saving a lead creates its company here.</div>'}
+  </section>`;
+}
+
+/* ---------- Proof points ---------- */
+function viewProof() {
+  return `<section class="panel stack"><div class="panel-head"><h2>Proof points</h2><span class="muted small">Your quantified wins, tagged by role type. Each lead suggests the 3 that match best.</span></div>
+  ${S.proofPoints.map((p) => `<div class="stack" style="border-bottom:1px solid var(--line);padding-bottom:12px">
+    <label class="field"><span>Proof point</span><textarea rows="2" data-ppfield="text" data-ppid="${p.id}">${esc(p.text)}</textarea></label>
+    <div class="row small">${Object.keys(ARCH).map((k) => `<label class="row" title="${esc(ARCH[k].name)}"><input type="checkbox" data-pptag="${k}" data-ppid="${p.id}" ${(p.tags || []).includes(k) ? "checked" : ""}>${k}</label>`).join("")}</div>
+    <label class="field"><span>Keywords (comma separated)</span><input type="text" data-ppfield="keywords" data-ppid="${p.id}" value="${esc((p.keywords || []).join(", "))}"></label>
+    <div><button class="btn danger" data-act="del-pp" data-ppid="${p.id}">Delete</button></div></div>`).join("") || '<div class="empty">No proof points yet.</div>'}
+  <div><button class="btn primary" data-act="add-pp">Add proof point</button></div>
+  <div class="small muted">Role types: ${Object.entries(ARCH).map(([k, a]) => `<strong>${k}</strong> ${esc(a.name)}`).join(" · ")}</div></section>`;
+}
+
+/* ---------- Settings ---------- */
+function viewSettings() {
+  const st = S.settings, w = st.weights, total = Object.values(w).reduce((a, b) => a + (+b || 0), 0);
+  return `<div class="grid-2">
+  <section class="panel stack"><h2>Your search</h2>
+    <div class="form-grid">
+      <label class="field"><span>Home base</span><select id="s-homeZone">${HOME_ZONES.map((z) => `<option value="${z}" ${st.homeZone === z ? "selected" : ""}>${ZONES[z].label}</option>`).join("")}</select></label>
+      <label class="field"><span>Max on-site days / week</span><input type="number" id="s-maxOnsiteDays" min="0" max="5" value="${st.maxOnsiteDays}"></label>
+      <label class="field"><span>Comp floor, base ($, 0 = none)</span><input type="number" id="s-compFloor" step="5000" value="${st.compFloor}"></label>
+    </div>
+    <div class="label">Role-type priority</div>
+    <div class="form-grid">${Object.entries(ARCH).map(([k, a]) => `<label class="field"><span>${k} · ${esc(a.name)}</span><select data-arch="${k}">${["primary", "secondary", "other"].map((p) => `<option ${st.archPriority[k] === p ? "selected" : ""}>${p}</option>`).join("")}</select></label>`).join("")}</div>
+    <label class="field"><span>Resume versions (one per line)</span><textarea id="s-resumeVersions" rows="3">${esc(st.resumeVersions.join("\n"))}</textarea></label>
+  </section>
+  <section class="panel stack"><div class="panel-head"><h2>Score weights</h2><span class="small muted">Total <span class="num">${total}</span>; scores are normalized to 100</span></div>
+    <div class="weights">${FACTORS.map(([k, label]) => `<div class="weight-row"><label for="w-${k}">${label}</label><input type="range" id="w-${k}" data-weight="${k}" min="0" max="40" step="1" value="${w[k] || 0}"><span class="num">${w[k] || 0}</span></div>`).join("")}</div>
+    <button class="btn" data-act="reset-weights">Reset weights</button>
+  </section>
+  </div>
+  <div class="grid-2">
+  <section class="panel stack"><h2>Claude analysis</h2>
+    <p class="small muted" style="margin:0">Optional. Your key is stored only in this browser and is never included in exports. Analysis needs this file opened directly (or hosted on GitHub Pages); a sandboxed preview may block the request.</p>
+    <label class="field"><span>Anthropic API key</span><input type="password" id="s-key" value="${esc(getKey())}" placeholder="sk-ant-…" autocomplete="off"></label>
+    <label class="field"><span>Model</span><input type="text" id="s-model" value="${esc(st.model)}"></label>
+    <label class="row small"><input type="checkbox" id="s-useAiScores" ${st.useAiScores ? "checked" : ""}> Use Claude's role fit, AI, and domain scores when a lead has an analysis</label>
+    <label class="field"><span>Profile summary sent with each analysis</span><textarea id="s-profileSummary" rows="6">${esc(st.profileSummary)}</textarea></label>
+  </section>
+  <section class="panel stack"><h2>Data</h2>
+    <p class="small muted" style="margin:0">Everything lives in this browser. Export a backup regularly; the file is your source of truth across devices.</p>
+    <div class="row"><button class="btn primary" data-act="export">Download backup</button><button class="btn" data-act="copy-json">Copy backup JSON</button></div>
+    <label class="field"><span>Import a backup or profile file (.json): merges by id</span><input type="file" id="s-import" accept=".json,application/json"></label>
+    <label class="field"><span>Import leads from CSV (columns: company, title, url, location, workplace, stage, posted, sector, funding_stage, raise_date, source, notes, comp_min, comp_max)</span><input type="file" id="s-csv" accept=".csv,text/csv"></label>
+    <details><summary>Keyword profile (advanced)</summary><textarea id="s-profile" rows="14" class="mono small" style="margin-top:8px">${esc(JSON.stringify(S.profile, null, 2))}</textarea><div class="row" style="margin-top:8px"><button class="btn" data-act="save-profile">Save keyword profile</button><button class="btn ghost" data-act="reset-profile">Reset to default</button></div></details>
+    <div class="row"><button class="btn" data-act="load-sample">Load sample data</button><button class="btn danger" data-act="wipe">Delete all data</button></div>
+    <div id="wipe-confirm"></div>
+  </section></div>`;
+}
+
+/* ---------- Lead drawer ---------- */
+function renderDrawer() {
+  const root = document.getElementById("drawer-root");
+  const l = openLeadId && byId(S.leads, openLeadId);
+  if (!l) { root.innerHTML = ""; return; }
+  const c = company(l), r = computeFactors(l), s = score(l), bb = bestBullets(l);
+  const acts = S.activities.filter((a) => a.leadId === l.id).sort((a, b) => b.date.localeCompare(a.date));
+  const people = S.contacts.filter((p) => p.companyId === l.companyId);
+  root.innerHTML = `<div class="drawer-back" data-act="close"></div>
+  <aside class="drawer" role="dialog" aria-label="Lead details">
+    <div class="drawer-head"><div><div class="label">${esc(c.name)}${c.stage ? " · " + esc(c.stage) : ""}</div><h2>${esc(leadName(l))}</h2>
+      <div class="row small" style="margin-top:6px">${archChip(r.arch)}<span class="muted">${r.arch ? esc(ARCH[r.arch].name) : "role type unclear"}</span>${fuChip(l)}${l.url ? `<a href="${esc(l.url)}" target="_blank" rel="noopener">Open posting</a>` : ""}</div></div>
+      <div style="text-align:right"><div class="score-big">${s}</div><button class="btn ghost small" data-act="close">Close</button></div></div>
+    <section class="panel stack"><div class="form-grid">
+      <label class="field"><span>Stage</span><select data-lfield="stage">${STAGES.map(([k, lab]) => `<option value="${k}" ${l.stage === k ? "selected" : ""}>${lab}</option>`).join("")}</select></label>
+      <label class="field"><span>Next follow-up</span><input type="date" data-lfield="nextFollowUp" value="${esc(l.nextFollowUp)}"></label>
+      <label class="field"><span>Resume sent</span><select data-lfield="resumeVersion"><option value="">—</option>${S.settings.resumeVersions.map((v) => `<option ${l.resumeVersion === v ? "selected" : ""}>${esc(v)}</option>`).join("")}</select></label>
+      <label class="field"><span>Role type</span><select data-lfield="archOverride"><option value="">Auto (${r.arch || "?"})</option>${Object.keys(ARCH).map((k) => `<option value="${k}" ${l.archOverride === k ? "selected" : ""}>${k} · ${esc(ARCH[k].name)}</option>`).join("")}</select></label>
+    </div>
+    <div class="row">${[3, 7, 14].map((d) => `<button class="btn small" data-act="fu" data-days="${d}">Follow up in ${d}d</button>`).join("")}</div></section>
+    <section class="panel stack"><div class="panel-head"><h3>Score breakdown</h3><span class="small muted">Hover or read the note under each bar</span></div>
+      <div class="row small">${r.flags.levelDown ? '<span class="chip warn">below target level</span>' : ""}${r.flags.belowFloor ? '<span class="chip warn">below comp floor</span>' : ""}${r.flags.redFlags.length ? '<span class="chip warn">red flags</span>' : ""}</div>
+      ${factorBars(r)}
+      <details><summary class="small">Override a factor manually</summary><div class="form-grid" style="margin-top:8px">${FACTORS.map(([k, label]) => `<label class="field"><span>${label} (0–5)</span><input type="number" min="0" max="5" step="0.5" data-override="${k}" value="${l.overrides && l.overrides[k] != null ? l.overrides[k] : ""}" placeholder="auto"></label>`).join("")}</div></details>
+      <div class="row"><button class="btn" data-act="ai-lead" ${getKey() ? "" : "disabled"}>${l.ai ? "Re-run" : "Run"} Claude analysis</button><span class="small muted" id="ai-lead-status">${getKey() ? "" : "Add an API key in Settings to enable."}</span></div>
+      ${l.ai ? aiBlock(l.ai) : ""}
+    </section>
+    <section class="panel stack"><h3>Lead with</h3>${bb.length ? `<ul class="bullets">${bb.map((p) => `<li>${esc(p.text)}</li>`).join("")}</ul>` : '<div class="muted small">No matching proof points. Add some on the Proof points tab.</div>'}</section>
+    <section class="panel stack"><h3>People at ${esc(c.name)}</h3>
+      ${people.map((p) => `<div class="row"><strong>${esc(p.name)}</strong><span class="muted small">${esc(p.role)} · warmth ${p.warmth}/5 · ${esc(p.how)}</span></div>`).join("") || '<div class="muted small">No contacts. Add one under Companies & contacts to raise Access.</div>'}
+    </section>
+    <section class="panel stack"><h3>Activity</h3>
+      <div class="form-grid"><label class="field"><span>Type</span><select id="act-type">${["note", "message", "applied", "call", "interview", "referral"].map((t) => `<option>${t}</option>`).join("")}</select></label>
+      <label class="field"><span>Date</span><input type="date" id="act-date" value="${today()}"></label>
+      <label class="field wide"><span>What happened</span><input type="text" id="act-text" placeholder="Sent intro message to…"></label></div>
+      <div><button class="btn" data-act="add-activity">Log activity</button></div>
+      ${acts.map((a) => `<div class="small"><span class="num muted">${esc(a.date)}</span> <span class="chip">${esc(a.type)}</span> ${esc(a.text)}</div>`).join("") || '<div class="muted small">No activity yet.</div>'}
+    </section>
+    <section class="panel stack"><h3>Details</h3><div class="form-grid">
+      <label class="field"><span>Title</span><input type="text" data-lfield="title" value="${esc(l.title)}"></label>
+      <label class="field"><span>Location</span><input type="text" data-lfield="location" value="${esc(l.location)}"></label>
+      <label class="field"><span>Area</span><select data-lfield="zone">${Object.entries(ZONES).map(([k, z]) => `<option value="${k}" ${l.zone === k ? "selected" : ""}>${z.label}</option>`).join("")}</select></label>
+      <label class="field"><span>Workplace</span><select data-lfield="workplace">${["unknown", "onsite", "hybrid", "remote"].map((w) => `<option ${l.workplace === w ? "selected" : ""}>${w}</option>`).join("")}</select></label>
+      <label class="field"><span>On-site days</span><input type="number" min="0" max="5" data-lfield="onsiteDays" value="${l.onsiteDays || ""}"></label>
+      <label class="field"><span>Comp min</span><input type="number" step="5000" data-lfield="compMin" value="${l.compMin || ""}"></label>
+      <label class="field"><span>Comp max</span><input type="number" step="5000" data-lfield="compMax" value="${l.compMax || ""}"></label>
+      <label class="field"><span>Posted</span><input type="date" data-lfield="postedDate" value="${esc(l.postedDate)}"></label>
+      <label class="field"><span>Source</span><input type="text" data-lfield="source" value="${esc(l.source)}"></label>
+      <label class="field wide"><span>Posting URL</span><input type="url" data-lfield="url" value="${esc(l.url)}"></label>
+      <label class="field wide"><span>Description / notes</span><textarea rows="6" data-lfield="jd">${esc(l.jd)}</textarea></label>
+      <label class="field wide"><span>Private notes</span><textarea rows="3" data-lfield="notes">${esc(l.notes)}</textarea></label>
+    </div>
+    <div class="row"><button class="btn danger" data-act="del-lead">Delete lead</button><span id="del-confirm"></span></div></section>
+  </aside>`;
+}
+function logActivity(leadId, type, text, date) { S.activities.push({ id: uid("a"), leadId, type, text, date: date || today() }); }
+
+/* ============================================================
+   Event delegation
+   ============================================================ */
+document.addEventListener("click", async (e) => {
+  const open = e.target.closest("[data-open]");
+  const actEl = e.target.closest("[data-act]");
+  const go = e.target.closest("[data-view-go]");
+  if (go) { setView(go.dataset.viewGo); return; }
+  if (actEl) { await handleAct(actEl.dataset.act, actEl, e); return; }
+  if (open && !e.target.closest("input,select,textarea,button,a")) { openLeadId = open.dataset.open; renderDrawer(); }
+  const th = e.target.closest("th[data-sort]");
+  if (th) { const k = th.dataset.sort; tableSort = { key: k, dir: tableSort.key === k ? -tableSort.dir : (k === "score" ? -1 : 1) }; render(); }
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && openLeadId) { openLeadId = null; renderDrawer(); } });
+
+async function handleAct(act, el) {
+  const l = openLeadId && byId(S.leads, openLeadId);
+  switch (act) {
+    case "close": openLeadId = null; render(); break;
+    case "fu": l.nextFollowUp = daysAhead(+el.dataset.days); save(); render(); toast("Follow-up set"); break;
+    case "add-activity": {
+      const type = document.getElementById("act-type").value, text = document.getElementById("act-text").value.trim(), date = document.getElementById("act-date").value || today();
+      if (!text) { toast("Describe what happened first"); return; }
+      logActivity(l.id, type, text, date);
+      const idx = (k) => STAGES.findIndex((x) => x[0] === k);
+      if (type === "applied" && idx(l.stage) < idx("applied")) l.stage = "applied";
+      if ((type === "message" || type === "referral") && idx(l.stage) < idx("warming")) l.stage = "warming";
+      if (type === "interview" && idx(l.stage) < idx("interviewing")) l.stage = "interviewing";
+      if (!l.nextFollowUp || l.nextFollowUp <= today()) l.nextFollowUp = daysAhead(type === "applied" ? 7 : 5);
+      save(); render(); toast("Activity logged · follow-up " + l.nextFollowUp); break;
+    }
+    case "ai-lead": {
+      const st = document.getElementById("ai-lead-status"); el.disabled = true; st.textContent = "Analyzing…";
+      try { l.ai = await analyzeWithClaude(l); save(); render(); toast("Analysis added"); } catch (err) { st.textContent = err.message; el.disabled = false; }
+      break;
+    }
+    case "del-lead":
+      if (el.dataset.confirm) { S.leads = S.leads.filter((x) => x.id !== l.id); S.activities = S.activities.filter((a) => a.leadId !== l.id); openLeadId = null; save(); render(); toast("Lead deleted"); }
+      else { el.dataset.confirm = "1"; el.textContent = "Click again to delete"; }
+      break;
+    case "clear-sample":
+      for (const k of ["companies", "leads", "contacts", "activities", "proofPoints"]) S[k] = S[k].filter((x) => !x.sample);
+      save(); render(); toast("Sample data removed"); break;
+    case "load-sample": { const s = sampleData(); for (const k of Object.keys(s)) { const ids = new Set(S[k].map((x) => x.id)); S[k].push(...s[k].filter((x) => !ids.has(x.id))); } save(); render(); toast("Sample data loaded"); break; }
+    case "wipe":
+      if (el.dataset.confirm) { const keep = S.settings; S = freshState(false); S.settings = keep; save(); render(); toast("All leads deleted"); }
+      else { el.dataset.confirm = "1"; el.textContent = "Click again to delete everything"; }
+      break;
+    case "add-contact": S.contacts.push({ id: uid("p"), companyId: el.dataset.cid, name: "", role: "", warmth: 0, how: "", link: "", notes: "" }); save(); render(); break;
+    case "del-contact": S.contacts = S.contacts.filter((p) => p.id !== el.dataset.pid); save(); render(); break;
+    case "del-company": {
+      const n = S.leads.filter((x) => x.companyId === el.dataset.cid).length;
+      if (n) { toast("Delete its " + n + " lead(s) first"); return; }
+      S.companies = S.companies.filter((c) => c.id !== el.dataset.cid); S.contacts = S.contacts.filter((p) => p.companyId !== el.dataset.cid); save(); render(); break;
+    }
+    case "add-pp": S.proofPoints.push({ id: uid("pp"), text: "", tags: [], keywords: [] }); save(); render(); break;
+    case "del-pp": S.proofPoints = S.proofPoints.filter((p) => p.id !== el.dataset.ppid); save(); render(); break;
+    case "reset-weights": S.settings.weights = Object.assign({}, DEFAULT_SETTINGS.weights); save(); render(); break;
+    case "save-profile":
+      try { const p = JSON.parse(document.getElementById("s-profile").value); if (!p.clusters) throw new Error("missing clusters"); S.profile = p; rxCache.clear(); save(); render(); toast("Keyword profile saved"); }
+      catch (err) { toast("Not valid JSON: " + err.message); }
+      break;
+    case "reset-profile": S.profile = structuredClone(DEFAULT_PROFILE); save(); render(); toast("Keyword profile reset"); break;
+    case "export": {
+      const blob = new Blob([JSON.stringify(S, null, 2)], { type: "application/json" });
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "startup-search-backup-" + today() + ".json"; document.body.appendChild(a); a.click(); a.remove();
+      toast("Backup downloaded (if your browser allows downloads here)"); break;
+    }
+    case "copy-json":
+      try { await navigator.clipboard.writeText(JSON.stringify(S)); toast("Backup JSON copied"); } catch (err) { toast("Copy was blocked; use Download backup"); }
+      break;
+  }
+}
+
+document.addEventListener("input", (e) => {
+  const t = e.target;
+  if (t.id === "f-q") { filters.q = t.value; rerenderKeepFocus(t); return; }
+  if (t.dataset.weight) { S.settings.weights[t.dataset.weight] = +t.value; t.nextElementSibling.textContent = t.value; save(); return; }
+});
+document.addEventListener("change", (e) => {
+  const t = e.target, l = openLeadId && byId(S.leads, openLeadId);
+  if (t.id === "f-stage") { filters.stage = t.value; render(); return; }
+  if (t.id === "f-arch") { filters.arch = t.value; render(); return; }
+  if (t.id === "f-min") { filters.min = +t.value || 0; render(); return; }
+  if (t.dataset.weight) { render(); return; }
+  if (t.dataset.lfield && l) {
+    const k = t.dataset.lfield, prev = l[k];
+    l[k] = ["onsiteDays", "compMin", "compMax"].includes(k) ? (+t.value || 0) : t.value;
+    if (k === "location") l.zone = detectZone(t.value);
+    if (k === "stage" && prev !== l.stage) logActivity(l.id, "stage", "Moved to " + STAGE_LABEL[l.stage]);
+    save(); render(); return;
+  }
+  if (t.dataset.override && l) { l.overrides = l.overrides || {}; if (t.value === "") delete l.overrides[t.dataset.override]; else l.overrides[t.dataset.override] = +t.value; save(); render(); return; }
+  if (t.dataset.cfield) { const c = byId(S.companies, t.dataset.cid); c[t.dataset.cfield] = t.value; save(); return; }
+  if (t.dataset.cflag) { const c = byId(S.companies, t.dataset.cid); c[t.dataset.cflag] = t.checked; save(); return; }
+  if (t.dataset.pfield) { const p = byId(S.contacts, t.dataset.pid); p[t.dataset.pfield] = t.dataset.pfield === "warmth" ? clamp(+t.value || 0) : t.value; save(); return; }
+  if (t.dataset.ppfield) { const p = byId(S.proofPoints, t.dataset.ppid); p[t.dataset.ppfield] = t.dataset.ppfield === "keywords" ? t.value.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean) : t.value; save(); return; }
+  if (t.dataset.pptag) { const p = byId(S.proofPoints, t.dataset.ppid); const set = new Set(p.tags || []); t.checked ? set.add(t.dataset.pptag) : set.delete(t.dataset.pptag); p.tags = [...set]; save(); return; }
+  if (t.dataset.arch) { S.settings.archPriority[t.dataset.arch] = t.value; save(); return; }
+  const sMap = { "s-homeZone": "homeZone", "s-maxOnsiteDays": "maxOnsiteDays", "s-compFloor": "compFloor", "s-model": "model", "s-profileSummary": "profileSummary" };
+  if (sMap[t.id]) { const k = sMap[t.id]; S.settings[k] = ["maxOnsiteDays", "compFloor"].includes(k) ? (+t.value || 0) : t.value; save(); toast("Saved"); return; }
+  if (t.id === "s-resumeVersions") { S.settings.resumeVersions = t.value.split("\n").map((s) => s.trim()).filter(Boolean); save(); toast("Saved"); return; }
+  if (t.id === "s-useAiScores") { S.settings.useAiScores = t.checked; save(); return; }
+  if (t.id === "s-key") { setKey(t.value.trim()); toast(t.value.trim() ? "API key saved in this browser" : "API key removed"); return; }
+  if (t.id === "s-import" && t.files[0]) { readFile(t.files[0], importJSON); t.value = ""; return; }
+  if (t.id === "s-csv" && t.files[0]) { readFile(t.files[0], importCSV); t.value = ""; return; }
+});
+function rerenderKeepFocus(input) { const pos = input.selectionStart; render(); const el = document.getElementById(input.id); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) { /* ignore */ } } }
+function readFile(file, fn) { const r = new FileReader(); r.onload = () => fn(r.result); r.readAsText(file); }
+
+function importJSON(text) {
+  let d; try { d = JSON.parse(text); } catch (e) { toast("That file isn't valid JSON"); return; }
+  if (d.settings) { delete d.settings.apiKey; S.settings = Object.assign(S.settings, d.settings); S.settings.weights = Object.assign({}, DEFAULT_SETTINGS.weights, S.settings.weights); }
+  if (d.profile) { S.profile = Object.assign(structuredClone(DEFAULT_PROFILE), d.profile); rxCache.clear(); }
+  let n = 0;
+  for (const k of ["companies", "leads", "contacts", "activities", "proofPoints"]) {
+    if (!Array.isArray(d[k])) continue;
+    for (const item of d[k]) { const i = S[k].findIndex((x) => x.id === item.id); if (i >= 0) S[k][i] = item; else S[k].push(item); n++; }
+  }
+  save(); render(); toast("Imported " + n + " records");
+}
+function parseCSV(text) {
+  const rows = []; let row = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ",") { row.push(cell); cell = ""; }
+    else if (ch === "\n" || ch === "\r") { if (ch === "\r" && text[i + 1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = ""; }
+    else cell += ch;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter((r) => r.some((c) => c.trim()));
+}
+function importCSV(text) {
+  const rows = parseCSV(text); if (rows.length < 2) { toast("No rows found"); return; }
+  const head = rows[0].map((h) => h.trim().toLowerCase().replace(/\s+/g, "_"));
+  const get = (r, ...names) => { for (const n of names) { const i = head.indexOf(n); if (i >= 0 && r[i] != null && r[i].trim()) return r[i].trim(); } return ""; };
+  let n = 0;
+  for (const r of rows.slice(1)) {
+    const name = get(r, "company", "company_name", "organization"); if (!name) continue;
+    let c = S.companies.find((x) => x.name.toLowerCase() === name.toLowerCase());
+    if (!c) { c = { id: uid("c"), name, stage: "", lastRaiseDate: "", sector: "", website: "", aiNative: false, domainMatch: false, notes: "" }; S.companies.push(c); }
+    c.sector = get(r, "sector", "industry") || c.sector; c.stage = get(r, "funding_stage", "company_stage", "round") || c.stage; c.lastRaiseDate = get(r, "raise_date", "last_raise", "last_raise_date") || c.lastRaiseDate; c.website = get(r, "website") || c.website;
+    const title = get(r, "title", "role", "job_title"), url = get(r, "url", "link", "job_url");
+    if (url && S.leads.some((l) => l.url === url)) continue;
+    const location = get(r, "location");
+    const stage = get(r, "stage").toLowerCase();
+    const wp = get(r, "workplace").toLowerCase();
+    S.leads.push({ id: uid("l"), companyId: c.id, kind: title ? "posting" : "target", title, url, jd: get(r, "description", "jd", "notes"), location, zone: detectZone(location), workplace: ["onsite", "hybrid", "remote"].includes(wp) ? wp : (/remote/i.test(location) ? "remote" : "unknown"), onsiteDays: 0, compMin: +get(r, "comp_min") || 0, compMax: +get(r, "comp_max") || 0, postedDate: get(r, "posted", "posted_date", "date_posted"), foundDate: today(), stage: STAGE_LABEL[stage] ? stage : "discovered", nextFollowUp: "", resumeVersion: "", archOverride: "", overrides: {}, ai: null, notes: "", source: get(r, "source") || "CSV import" });
+    n++;
+  }
+  save(); render(); toast("Imported " + n + " leads");
+}
+
+render();
+</script>
+</body>
+</html>
