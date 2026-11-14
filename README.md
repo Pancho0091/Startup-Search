@@ -2,7 +2,9 @@
 
 A single-file job-search tracker for startup roles in Los Angeles and Orange County. Paste a job posting or add a target company; the tool extracts the details, scores the lead against your profile, and tells you what to do next.
 
-Open `index.html` in a browser. There is nothing to install and no server.
+**Live app:** https://pancho0091.github.io/Startup-Search/ (works on desktop and phone). You can also download `index.html` and open it directly. There is nothing to install and no server.
+
+Each device and browser keeps its own data. Use **Settings → Download backup** on one device and **Import** on another to move your leads.
 
 ## How it works
 
@@ -43,3 +45,7 @@ The repository ships with clearly marked, made-up sample data so the tool opens 
 ## CSV import
 
 Columns recognized (any order, case-insensitive): `company, title, url, location, workplace, stage, posted, sector, funding_stage, raise_date, source, notes, comp_min, comp_max`. A row without a title becomes a target-company lead.
+
+## Deployment
+
+`.github/workflows/pages.yml` publishes `index.html` (and nothing else) to GitHub Pages on every push that changes it. One-time setup: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
