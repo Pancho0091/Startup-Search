@@ -609,37 +609,37 @@ async function analyzeWithClaude(lead) {
 const STARTER_WATCHLIST = [
   ["Tatari", "greenhouse", "tatari", "TV ad measurement", "lane1", true],
   ["Spotter", "greenhouse", "spotter", "Creator economy", "lane1", true],
-  ["Wellth", "greenhouse", "wellth", "Digital health", "lane1", true],
+  ["Wellth", "unknown", "", "Digital health", "lane1", true],
   ["TubeScience", "greenhouse", "tubescience52", "Performance creative / ad-tech", "lane1", true],
   ["Flip", "greenhouse", "flip", "Voice AI for commerce", "lane1", true],
-  ["Whatnot", "ashby", "whatnot", "Live commerce marketplace", "lane1", true],
+  ["Whatnot", "greenhouse", "whatnot", "Live commerce marketplace", "lane1", true],
   ["Paragon", "ashby", "Paragon", "B2B integrations SaaS", "lane1", true],
   ["Atticus", "ashby", "atticus", "Legal / consumer services", "lane1", true],
   ["Gallatin AI", "ashby", "gallatin", "Defense logistics AI", "lane1", true],
   ["Corner Health", "lever", "corner-health", "Healthcare services", "lane1", true],
   ["Tala", "lever", "tala", "Fintech", "lane1", true],
-  ["Thrive Market", "lever", "thrivemarket", "Online grocery membership", "lane1", true],
+  ["Thrive Market", "unknown", "", "Online grocery membership", "lane1", true],
   ["CreatorIQ", "ashby", "creatoriq", "Creator marketing SaaS (Culver City)", "lane1", true],
   ["Acorns", "ashby", "acorns", "Consumer fintech (Irvine), late stage", "lane1", true],
   ["Tapcart", "ashby", "tapcart", "E-commerce mobile apps (Santa Monica)", "lane1", true],
   ["Zefr", "ashby", "zefr", "AI brand safety / ad-tech (Marina del Rey)", "lane1", true],
-  ["Favorited", "ashby", "favorited", "Consumer social (Santa Monica)", "lane1", true],
+  ["Favorited", "unknown", "", "Consumer social (Santa Monica)", "lane1", true],
   ["Plug", "ashby", "plugmotors", "Used EV marketplace", "lane1", true],
   ["Hartbeat", "ashby", "hartbeat", "Media / entertainment (West Hollywood)", "lane1", true],
-  ["Benchmark Sports", "ashby", "Benchmark Sports", "Sports tech (Irvine)", "lane1", true],
+  ["Benchmark Sports", "unknown", "", "Sports tech (Irvine)", "lane1", true],
   ["Eventual", "ashby", "eventual", "Data infrastructure (Santa Monica / NY)", "lane1", true],
-  ["Realm", "greenhouse", "realm", "Consumer / proptech (Marina del Rey)", "lane1", true],
-  ["Passes", "greenhouse", "passes", "Creator monetization (Hollywood)", "lane1", true],
+  ["Realm", "unknown", "", "Consumer / proptech (Marina del Rey)", "lane1", true],
+  ["Passes", "unknown", "", "Creator monetization (Hollywood)", "lane1", true],
   ["Headspace", "greenhouse", "hs", "Mental health (Santa Monica), late stage", "lane1", true],
   ["GumGum", "greenhouse", "gumgum", "Contextual ad-tech (Santa Monica)", "lane1", true],
-  ["FabFitFun", "greenhouse", "fabfitfun", "Subscription commerce", "lane1", true],
-  ["Honeylove", "greenhouse", "honeylove", "DTC apparel", "lane1", true],
-  ["EVPassport", "greenhouse", "evpassport", "EV charging (Santa Monica)", "lane1", true],
+  ["FabFitFun", "unknown", "", "Subscription commerce", "lane1", true],
+  ["Honeylove", "unknown", "", "DTC apparel", "lane1", true],
+  ["EVPassport", "unknown", "", "EV charging (Santa Monica)", "lane1", true],
   ["O Positiv", "greenhouse", "opositiv", "DTC health", "lane1", true],
   ["Obsidian Security", "greenhouse", "obsidiansecurity", "SaaS security (Newport Beach)", "lane1", true],
-  ["Finfare Financial", "greenhouse", "finfare-financials", "Fintech (Irvine)", "lane1", true],
+  ["Finfare Financial", "greenhouse", "finfare-financial", "Fintech (Irvine)", "lane1", true],
   ["Eudia", "greenhouse", "eudia", "Legal AI (Irvine office)", "lane1", false],
-  ["CloudKitchens (CSS)", "greenhouse", "citystoragesystems", "Food infrastructure, late stage", "lane1", true],
+  ["CloudKitchens (CSS)", "greenhouse", "css", "Food infrastructure, late stage", "lane1", true],
   ["Our Place", "lever", "our-place", "DTC cookware", "lane1", true],
   ["VideoAmp", "lever", "videoamp.com", "Media measurement (Santa Monica)", "lane1", true],
   ["Promenade", "lever", "promenade", "Santa Monica", "lane1", true],
@@ -672,7 +672,7 @@ const STARTER_WATCHLIST = [
   ["Thatch", "greenhouse", "thatch", "Health benefits (distributed)", "lane2", false],
   ["Clipboard Health", "ashby", "clipboard", "Healthcare staffing (remote-first)", "lane2", false],
   ["Warp", "ashby", "warp", "Payroll / HR (NY)", "lane2", false],
-  ["Leapsome", "ashby", "Leapsome", "Performance management (Berlin / NY)", "lane2", false],
+  ["Leapsome", "unknown", "", "Performance management (Berlin / NY)", "lane2", false],
   ["Compa", "other", "", "Comp intelligence (Irvine)", "lane2", true, "https://www.builtinla.com/company/compa/jobs"],
   ["Rain", "other", "", "Earned wage access", "lane2", true, "https://www.rainapp.com/careers"],
   ["Bambee", "other", "", "HR for small business (LA)", "lane2", true, "https://www.bambee.com/careers/"],
@@ -780,7 +780,10 @@ function ensureCompanyFor(w) {
 }
 // Bump when STARTER_WATCHLIST grows: new starter companies are merged into existing watchlists
 // (matched by name), without touching entries the user edited or removed.
-const STARTER_VERSION = 3;
+const STARTER_VERSION = 4;
+// Board addresses that returned 404 in the daily fetch. Saved watchlists still pointing at them
+// are moved to the corrected address from STARTER_WATCHLIST (or to "board not set").
+const RETIRED_BOARDS = new Set(["ashby:whatnot", "greenhouse:finfare-financials", "greenhouse:citystoragesystems", "greenhouse:wellth", "ashby:favorited", "ashby:benchmark sports", "greenhouse:realm", "greenhouse:passes", "greenhouse:fabfitfun", "greenhouse:honeylove", "greenhouse:evpassport", "lever:thrivemarket", "ashby:leapsome"]);
 function ensureWatchlist() {
   const fresh = !Array.isArray(S.watchlist);
   if (!fresh && (S.watchStarterVersion || 1) >= STARTER_VERSION) return;
@@ -790,6 +793,7 @@ function ensureWatchlist() {
     const key = name.toLowerCase();
     if (removed.has(key)) continue;
     const ex = S.watchlist.find((w) => w.name.toLowerCase() === key);
+    if (ex && RETIRED_BOARDS.has(ex.ats + ":" + (ex.slug || "").toLowerCase())) { Object.assign(ex, { ats, slug, careersUrl: careersUrl || "", jobs: [], status: "", lastChecked: "" }); continue; }
     if (ex) { if (!ex.slug && (slug || careersUrl)) Object.assign(ex, { ats, slug, careersUrl: careersUrl || "", jobs: [], status: "", lastChecked: "" }); continue; }
     S.watchlist.push({ id: uid("w"), name, ats, slug, careersUrl: careersUrl || "", sector, lane, hqLA, jobs: [], seen: {}, lastChecked: "", status: "" });
   }
