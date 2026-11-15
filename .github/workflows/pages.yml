@@ -3,7 +3,9 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ccr-f1e2fd34-8b8atu]
-    paths: [index.html, .github/workflows/pages.yml]
+    paths: [index.html, scripts/**, .github/workflows/pages.yml]
+  schedule:
+    - cron: "17 13 * * *"   # daily, ~5–6am Pacific
   workflow_dispatch:
 
 permissions:
@@ -23,18 +25,23 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-      # Publish only the app itself. Personal data never lives in git (private/ is ignored),
-      # and this keeps README, workflows, and anything else out of the public site.
+      # Read every watchlist company's public job board (Greenhouse, Ashby, Lever) into site/jobs.json.
+      - name: Fetch open roles
+        run: node scripts/fetch-jobs.mjs
+
+      # Publish only the app and the job data. Personal data never lives in git (private/ is ignored).
       - name: Assemble site
         run: |
-          mkdir _site
-          cp index.html _site/index.html
-          touch _site/.nojekyll
+          cp index.html site/index.html
+          touch site/.nojekyll
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: site
       - id: deployment
         uses: actions/deploy-pages@v4

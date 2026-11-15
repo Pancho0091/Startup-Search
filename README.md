@@ -40,6 +40,8 @@ A first data hire, B HR-tech / AI recruiting, C BizOps / Strategy & Ops, D Peopl
 
 The **Watchlist** tab reads company job boards directly from your browser through the public Greenhouse, Ashby, and Lever posting APIs. Press **Check all boards** to pull every open role, keep the ones that match (analytics, strategy, operations, finance, or people roles at senior level, in LA / OC or remote at an LA-based or HR-tech company), and add any of them to your leads with one click.
 
+Real job data is refreshed **every morning**: a scheduled GitHub Action (`scripts/fetch-jobs.mjs`) reads every board in the starter list and publishes `jobs.json` next to the app, so the Watchlist opens already filled in. **Check all boards now** re-reads boards from your browser for anything newer, including companies you added yourself.
+
 It ships with a starter list of 96 companies (81 read automatically): LA/OC startups across industries, an HR-tech named list, and LA hardware, defense, and space companies. Every board address was taken from a real posting URL found during research. New starter companies merge into an existing watchlist automatically; companies you remove stay removed. Add more by pasting a company's careers link (`jobs.ashbyhq.com/…`, `job-boards.greenhouse.io/…`, `jobs.lever.co/…`). Rippling boards and companies without a known board are listed with a link to open or find them.
 
 ## Your data stays out of git
@@ -54,4 +56,4 @@ Columns recognized (any order, case-insensitive): `company, title, url, location
 
 ## Deployment
 
-`.github/workflows/pages.yml` publishes `index.html` (and nothing else) to GitHub Pages on every push that changes it. One-time setup: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+`.github/workflows/pages.yml` runs on every push that changes the app and daily at about 6am Pacific: it fetches job data, then publishes `index.html` and `jobs.json` (nothing else) to GitHub Pages. One-time setup: **Settings → Pages → Build and deployment → Source: GitHub Actions**.

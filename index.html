@@ -833,6 +833,32 @@ async function checkAllBoards() {
   const fresh = watchMatches().filter((m) => !m.w.seen[m.j.id]).length;
   toast(fresh ? fresh + " new matching role(s)" : "No new matching roles");
 }
+// Daily job data: a GitHub Action reads every board and publishes jobs.json next to the app.
+// The browser's own "Check all boards" result wins when it is newer.
+async function loadFeed() {
+  let d;
+  try { const r = await fetch("jobs.json", { cache: "no-cache" }); if (!r.ok) return; d = await r.json(); } catch (e) { return; }
+  if (!d || !Array.isArray(d.boards)) return;
+  ensureWatchlist();
+  let updated = 0;
+  for (const b of d.boards) {
+    const w = S.watchlist.find((x) => x.ats === b.ats && (x.slug || "").toLowerCase() === (b.slug || "").toLowerCase()) || S.watchlist.find((x) => x.name.toLowerCase() === b.name.toLowerCase());
+    if (!w || (w.lastChecked && w.lastChecked >= d.generatedAt)) continue;
+    w.jobs = (b.jobs || []).map((j) => {
+      const p = parseJD(j.desc || "");
+      const job = { ...j, compMin: j.compMin || p.compMin || 0, compMax: j.compMax || p.compMax || 0, workplace: j.workplace && j.workplace !== "unknown" ? j.workplace : (p.workplace || "unknown"), onsiteDays: p.onsiteDays || 0 };
+      return { ...job, rel: jobRelevance(w, job) };
+    });
+    w.status = b.status; w.total = b.total; w.lastChecked = d.generatedAt;
+    updated++;
+  }
+  S.feedGeneratedAt = d.generatedAt;
+  if (updated) {
+    save(); render();
+    const fresh = watchMatches().filter((m) => !m.w.seen[m.j.id] && m.j.rel && m.j.rel.ok).length;
+    if (fresh) toast(fresh + " new matching role(s) on your watchlist");
+  }
+}
 function watchMatches() {
   const out = [];
   for (const w of S.watchlist || []) for (const j of w.jobs || []) if (watchShowAll || (j.rel && j.rel.ok)) out.push({ w, j });
@@ -851,9 +877,9 @@ function viewWatch() {
   return `
   <section class="panel stack">
     <div class="panel-head"><h2>Open roles at your watchlist companies</h2>
-      <span class="muted small">${checked ? "Last checked " + esc(checked.slice(0, 16).replace("T", " ")) + " UTC" : "Not checked yet"} · ${apiCount} boards readable automatically</span></div>
+      <span class="muted small">${checked ? "Last checked " + esc(checked.slice(0, 16).replace("T", " ")) + " UTC" : "Not checked yet"} · ${apiCount} boards readable automatically${S.feedGeneratedAt ? " · refreshed daily" : ""}</span></div>
     <div class="row">
-      <button class="btn primary" data-act="watch-check" ${watchBusy ? "disabled" : ""}>${watchBusy ? esc(watchProgress || "Checking…") : "Check all boards"}</button>
+      <button class="btn primary" data-act="watch-check" ${watchBusy ? "disabled" : ""}>${watchBusy ? esc(watchProgress || "Checking…") : "Check all boards now"}</button>
       <label class="row small"><input type="checkbox" id="watch-all" ${watchShowAll ? "checked" : ""}> Show every role, not just matches</label>
       ${matches.some((m) => m.isNew) ? '<button class="btn ghost" data-act="watch-seen">Mark all as seen</button>' : ""}
     </div>
@@ -977,6 +1003,7 @@ function viewToday() {
   </div>
   <div class="grid-2">
     <section class="panel"><div class="panel-head"><h2>Best postings to act on</h2><span class="muted small">Discovered or researching</span></div>
+      ${(() => { const n = (S.watchlist ? watchMatches().filter((m) => m.j.rel && m.j.rel.ok && !m.w.seen[m.j.id]).length : 0); return n ? `<div class="banner" style="margin-bottom:10px"><span><strong>${n} new matching role(s)</strong> on your watchlist.</span><button class="btn" data-view-go="watch">Review</button></div>` : ""; })()}
       ${top.length ? top.map(([l, s]) => item(l, s)).join("") : '<div class="empty">No new postings. Paste one on the Add lead tab.</div>'}
       <div class="row" style="margin-top:12px"><button class="btn primary" data-view-go="add">Add lead</button></div>
     </section>
@@ -1519,6 +1546,7 @@ function importCSV(text) {
 
 ensureWatchlist();
 render();
+loadFeed();
 </script>
 </body>
 </html>
